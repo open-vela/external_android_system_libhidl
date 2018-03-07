@@ -31,7 +31,6 @@ cc_library_shared {
         "libcutils",
         "libhwbinder",
         "libbase",
-        "liblog",
         "libutils",
         "libhidlbase",
         "libhidltransport",

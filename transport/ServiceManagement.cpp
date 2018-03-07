@@ -30,26 +30,19 @@
 
 #include <hidl/HidlBinderSupport.h>
 #include <hidl/HidlInternal.h>
-#include <hidl/HidlTransportUtils.h>
 #include <hidl/ServiceManagement.h>
 #include <hidl/Status.h>
-#include <utils/SystemClock.h>
 
-#include <android-base/file.h>
 #include <android-base/logging.h>
-#include <android-base/parseint.h>
 #include <android-base/properties.h>
 #include <android-base/stringprintf.h>
-#include <android-base/strings.h>
 #include <hwbinder/IPCThreadState.h>
 #include <hwbinder/Parcel.h>
-#if !defined(__ANDROID_RECOVERY__)
 #include <vndksupport/linker.h>
-#endif
 
-#include <android/hidl/manager/1.2/BnHwServiceManager.h>
-#include <android/hidl/manager/1.2/BpHwServiceManager.h>
-#include <android/hidl/manager/1.2/IServiceManager.h>
+#include <android/hidl/manager/1.1/IServiceManager.h>
+#include <android/hidl/manager/1.1/BpHwServiceManager.h>
+#include <android/hidl/manager/1.1/BnHwServiceManager.h>
 
 #define RE_COMPONENT    "[a-zA-Z_][a-zA-Z_0-9]*"
 #define RE_PATH         RE_COMPONENT "(?:[.]" RE_COMPONENT ")*"
@@ -57,24 +50,23 @@ static const std::regex gLibraryFileNamePattern("(" RE_PATH "@[0-9]+[.][0-9]+)-i
 
 using android::base::WaitForProperty;
 
-using ::android::hidl::base::V1_0::IBase;
 using IServiceManager1_0 = android::hidl::manager::V1_0::IServiceManager;
 using IServiceManager1_1 = android::hidl::manager::V1_1::IServiceManager;
-using IServiceManager1_2 = android::hidl::manager::V1_2::IServiceManager;
-using ::android::hidl::manager::V1_0::IServiceNotification;
+using android::hidl::manager::V1_0::IServiceNotification;
+using android::hidl::manager::V1_1::BpHwServiceManager;
+using android::hidl::manager::V1_1::BnHwServiceManager;
 
 namespace android {
 namespace hardware {
 
+namespace details {
+extern Mutex gDefaultServiceManagerLock;
+extern sp<android::hidl::manager::V1_1::IServiceManager> gDefaultServiceManager;
+}  // namespace details
+
 static const char* kHwServicemanagerReadyProperty = "hwservicemanager.ready";
 
-#if defined(__ANDROID_RECOVERY__)
-static constexpr bool kIsRecovery = true;
-#else
-static constexpr bool kIsRecovery = false;
-#endif
-
-static void waitForHwServiceManager() {
+void waitForHwServiceManager() {
     using std::literals::chrono_literals::operator""s;
 
     while (!WaitForProperty(kHwServicemanagerReadyProperty, "true", 1s)) {
@@ -82,7 +74,17 @@ static void waitForHwServiceManager() {
     }
 }
 
-static std::string binaryName() {
+bool endsWith(const std::string &in, const std::string &suffix) {
+    return in.size() >= suffix.size() &&
+           in.substr(in.size() - suffix.size()) == suffix;
+}
+
+bool startsWith(const std::string &in, const std::string &prefix) {
+    return in.size() >= prefix.size() &&
+           in.substr(0, prefix.size()) == prefix;
+}
+
+std::string binaryName() {
     std::ifstream ifs("/proc/self/cmdline");
     std::string cmdline;
     if (!ifs.is_open()) {
@@ -98,122 +100,49 @@ static std::string binaryName() {
     return cmdline;
 }
 
-static std::string packageWithoutVersion(const std::string& packageAndVersion) {
-    size_t at = packageAndVersion.find('@');
-    if (at == std::string::npos) return packageAndVersion;
-    return packageAndVersion.substr(0, at);
-}
-
-static void tryShortenProcessName(const std::string& descriptor) {
-    const static std::string kTasks = "/proc/self/task/";
-
-    // make sure that this binary name is in the same package
+void tryShortenProcessName(const std::string &packageName) {
     std::string processName = binaryName();
 
-    // e.x. android.hardware.foo is this package
-    if (!base::StartsWith(packageWithoutVersion(processName), packageWithoutVersion(descriptor))) {
+    if (!startsWith(processName, packageName)) {
         return;
     }
 
-    // e.x. android.hardware.module.foo@1.2::IFoo -> foo@1.2
-    size_t lastDot = descriptor.rfind('.');
-    if (lastDot == std::string::npos) return;
-    size_t secondDot = descriptor.rfind('.', lastDot - 1);
-    if (secondDot == std::string::npos) return;
+    // e.x. android.hardware.module.foo@1.0 -> foo@1.0
+    size_t lastDot = packageName.rfind('.');
+    size_t secondDot = packageName.rfind('.', lastDot - 1);
 
-    std::string newName = processName.substr(secondDot + 1, std::string::npos);
-    ALOGI("Removing namespace from process name %s to %s.", processName.c_str(), newName.c_str());
-
-    std::unique_ptr<DIR, decltype(&closedir)> dir(opendir(kTasks.c_str()), closedir);
-    if (dir == nullptr) return;
-
-    dirent* dp;
-    while ((dp = readdir(dir.get())) != nullptr) {
-        if (dp->d_type != DT_DIR) continue;
-        if (dp->d_name[0] == '.') continue;
-
-        std::fstream fs(kTasks + dp->d_name + "/comm");
-        if (!fs.is_open()) {
-            ALOGI("Could not rename process, failed read comm for %s.", dp->d_name);
-            continue;
-        }
-
-        std::string oldComm;
-        fs >> oldComm;
-
-        // don't rename if it already has an explicit name
-        if (base::StartsWith(descriptor, oldComm)) {
-            fs.seekg(0, fs.beg);
-            fs << newName;
-        }
+    if (secondDot == std::string::npos) {
+        return;
     }
+
+    std::string newName = processName.substr(secondDot + 1,
+            16 /* TASK_COMM_LEN */ - 1);
+    ALOGI("Removing namespace from process name %s to %s.",
+            processName.c_str(), newName.c_str());
+
+    int rc = pthread_setname_np(pthread_self(), newName.c_str());
+    ALOGI_IF(rc != 0, "Removing namespace from process name %s failed.",
+            processName.c_str());
 }
 
 namespace details {
 
-/*
- * Returns the age of the current process by reading /proc/self/stat and comparing starttime to the
- * current time. This is useful for measuring how long it took a HAL to register itself.
- */
-static long getProcessAgeMs() {
-    constexpr const int PROCFS_STAT_STARTTIME_INDEX = 21;
-    std::string content;
-    android::base::ReadFileToString("/proc/self/stat", &content, false);
-    auto stats = android::base::Split(content, " ");
-    if (stats.size() <= PROCFS_STAT_STARTTIME_INDEX) {
-        LOG(INFO) << "Could not read starttime from /proc/self/stat";
-        return -1;
-    }
-    const std::string& startTimeString = stats[PROCFS_STAT_STARTTIME_INDEX];
-    static const int64_t ticksPerSecond = sysconf(_SC_CLK_TCK);
-    const int64_t uptime = android::uptimeMillis();
-
-    unsigned long long startTimeInClockTicks = 0;
-    if (android::base::ParseUint(startTimeString, &startTimeInClockTicks)) {
-        long startTimeMs = 1000ULL * startTimeInClockTicks / ticksPerSecond;
-        return uptime - startTimeMs;
-    }
-    return -1;
-}
-
-static void onRegistrationImpl(const std::string& descriptor, const std::string& instanceName) {
-    long halStartDelay = getProcessAgeMs();
-    if (halStartDelay >= 0) {
-        // The "start delay" printed here is an estimate of how long it took the HAL to go from
-        // process creation to registering itself as a HAL.  Actual start time could be longer
-        // because the process might not have joined the threadpool yet, so it might not be ready to
-        // process transactions.
-        LOG(INFO) << "Registered " << descriptor << "/" << instanceName << " (start delay of "
-                  << halStartDelay << "ms)";
-    }
-
-    tryShortenProcessName(descriptor);
-}
-
-void onRegistration(const std::string& packageName, const std::string& interfaceName,
-                    const std::string& instanceName) {
-    return onRegistrationImpl(packageName + "::" + interfaceName, instanceName);
+void onRegistration(const std::string &packageName,
+                    const std::string& /* interfaceName */,
+                    const std::string& /* instanceName */) {
+    tryShortenProcessName(packageName);
 }
 
 }  // details
 
 sp<IServiceManager1_0> defaultServiceManager() {
-    return defaultServiceManager1_2();
+    return defaultServiceManager1_1();
 }
 sp<IServiceManager1_1> defaultServiceManager1_1() {
-    return defaultServiceManager1_2();
-}
-sp<IServiceManager1_2> defaultServiceManager1_2() {
-    using android::hidl::manager::V1_2::BnHwServiceManager;
-    using android::hidl::manager::V1_2::BpHwServiceManager;
-
-    static std::mutex gDefaultServiceManagerLock;
-    static sp<IServiceManager1_2> gDefaultServiceManager;
-
     {
-        std::lock_guard<std::mutex> _l(gDefaultServiceManagerLock);
-        if (gDefaultServiceManager != nullptr) {
-            return gDefaultServiceManager;
+        AutoMutex _l(details::gDefaultServiceManagerLock);
+        if (details::gDefaultServiceManager != nullptr) {
+            return details::gDefaultServiceManager;
         }
 
         if (access("/dev/hwbinder", F_OK|R_OK|W_OK) != 0) {
@@ -224,22 +153,23 @@ sp<IServiceManager1_2> defaultServiceManager1_2() {
 
         waitForHwServiceManager();
 
-        while (gDefaultServiceManager == nullptr) {
-            gDefaultServiceManager =
-                fromBinder<IServiceManager1_2, BpHwServiceManager, BnHwServiceManager>(
-                    ProcessState::self()->getContextObject(nullptr));
-            if (gDefaultServiceManager == nullptr) {
+        while (details::gDefaultServiceManager == nullptr) {
+            details::gDefaultServiceManager =
+                    fromBinder<IServiceManager1_1, BpHwServiceManager, BnHwServiceManager>(
+                        ProcessState::self()->getContextObject(nullptr));
+            if (details::gDefaultServiceManager == nullptr) {
                 LOG(ERROR) << "Waited for hwservicemanager, but got nullptr.";
                 sleep(1);
             }
         }
     }
 
-    return gDefaultServiceManager;
+    return details::gDefaultServiceManager;
 }
 
-static std::vector<std::string> findFiles(const std::string& path, const std::string& prefix,
-                                          const std::string& suffix) {
+std::vector<std::string> search(const std::string &path,
+                              const std::string &prefix,
+                              const std::string &suffix) {
     std::unique_ptr<DIR, decltype(&closedir)> dir(opendir(path.c_str()), closedir);
     if (!dir) return {};
 
@@ -249,7 +179,8 @@ static std::vector<std::string> findFiles(const std::string& path, const std::st
     while ((dp = readdir(dir.get())) != nullptr) {
         std::string name = dp->d_name;
 
-        if (base::StartsWith(name, prefix) && base::EndsWith(name, suffix)) {
+        if (startsWith(name, prefix) &&
+                endsWith(name, suffix)) {
             results.push_back(name);
         }
     }
@@ -268,11 +199,6 @@ bool matchPackageName(const std::string& lib, std::string* matchedName, std::str
 }
 
 static void registerReference(const hidl_string &interfaceName, const hidl_string &instanceName) {
-    if (kIsRecovery) {
-        // No hwservicemanager in recovery.
-        return;
-    }
-
     sp<IServiceManager1_0> binderizedManager = defaultServiceManager();
     if (binderizedManager == nullptr) {
         LOG(WARNING) << "Could not registerReference for "
@@ -356,12 +282,8 @@ struct PassthroughServiceManager : IServiceManager1_1 {
 
         static std::string halLibPathVndkSp = android::base::StringPrintf(
             HAL_LIBRARY_PATH_VNDK_SP_FOR_VERSION, details::getVndkVersionStr().c_str());
-        std::vector<std::string> paths = {
-            HAL_LIBRARY_PATH_ODM, HAL_LIBRARY_PATH_VENDOR, halLibPathVndkSp,
-#ifndef __ANDROID_VNDK__
-            HAL_LIBRARY_PATH_SYSTEM,
-#endif
-        };
+        std::vector<std::string> paths = {HAL_LIBRARY_PATH_ODM, HAL_LIBRARY_PATH_VENDOR,
+                                          halLibPathVndkSp, HAL_LIBRARY_PATH_SYSTEM};
 
 #ifdef LIBHIDL_TARGET_DEBUGGABLE
         const char* env = std::getenv("TREBLE_TESTING_OVERRIDE");
@@ -387,17 +309,15 @@ struct PassthroughServiceManager : IServiceManager1_1 {
 #endif
 
         for (const std::string& path : paths) {
-            std::vector<std::string> libs = findFiles(path, prefix, ".so");
+            std::vector<std::string> libs = search(path, prefix, ".so");
 
             for (const std::string &lib : libs) {
                 const std::string fullPath = path + lib;
 
-                if (kIsRecovery || path == HAL_LIBRARY_PATH_SYSTEM) {
+                if (path == HAL_LIBRARY_PATH_SYSTEM) {
                     handle = dlopen(fullPath.c_str(), dlMode);
                 } else {
-#if !defined(__ANDROID_RECOVERY__)
                     handle = android_load_sphal_library(fullPath.c_str(), dlMode);
-#endif
                 }
 
                 if (handle == nullptr) {
@@ -437,12 +357,7 @@ struct PassthroughServiceManager : IServiceManager1_1 {
                 return true; // this module doesn't provide this instance name
             }
 
-            // Actual fqname might be a subclass.
-            // This assumption is tested in vts_treble_vintf_test
-            using ::android::hardware::details::getDescriptor;
-            std::string actualFqName = getDescriptor(ret.get());
-            CHECK(actualFqName.size() > 0);
-            registerReference(actualFqName, name);
+            registerReference(fqName, name);
             return false;
         });
 
@@ -489,26 +404,16 @@ struct PassthroughServiceManager : IServiceManager1_1 {
             HAL_LIBRARY_PATH_VNDK_SP_32BIT_FOR_VERSION, details::getVndkVersionStr().c_str());
         static std::vector<std::pair<Arch, std::vector<const char*>>> sAllPaths{
             {Arch::IS_64BIT,
-             {
-                 HAL_LIBRARY_PATH_ODM_64BIT, HAL_LIBRARY_PATH_VENDOR_64BIT,
-                 halLibPathVndkSp64.c_str(),
-#ifndef __ANDROID_VNDK__
-                 HAL_LIBRARY_PATH_SYSTEM_64BIT,
-#endif
-             }},
+             {HAL_LIBRARY_PATH_ODM_64BIT, HAL_LIBRARY_PATH_VENDOR_64BIT,
+              halLibPathVndkSp64.c_str(), HAL_LIBRARY_PATH_SYSTEM_64BIT}},
             {Arch::IS_32BIT,
-             {
-                 HAL_LIBRARY_PATH_ODM_32BIT, HAL_LIBRARY_PATH_VENDOR_32BIT,
-                 halLibPathVndkSp32.c_str(),
-#ifndef __ANDROID_VNDK__
-                 HAL_LIBRARY_PATH_SYSTEM_32BIT,
-#endif
-             }}};
+             {HAL_LIBRARY_PATH_ODM_32BIT, HAL_LIBRARY_PATH_VENDOR_32BIT,
+              halLibPathVndkSp32.c_str(), HAL_LIBRARY_PATH_SYSTEM_32BIT}}};
         std::map<std::string, InstanceDebugInfo> map;
         for (const auto &pair : sAllPaths) {
             Arch arch = pair.first;
             for (const auto &path : pair.second) {
-                std::vector<std::string> libs = findFiles(path, "", ".so");
+                std::vector<std::string> libs = search(path, "", ".so");
                 for (const std::string &lib : libs) {
                     std::string matchedName;
                     std::string implName;
@@ -626,7 +531,7 @@ struct Waiter : IServiceNotification {
         return Void();
     }
 
-    void wait(bool timeout) {
+    void wait() {
         using std::literals::chrono_literals::operator""s;
 
         if (!mRegisteredForNotifications) {
@@ -637,7 +542,7 @@ struct Waiter : IServiceNotification {
         }
 
         std::unique_lock<std::mutex> lock(mMutex);
-        do {
+        while(true) {
             mCondition.wait_for(lock, 1s, [this]{
                 return mRegistered;
             });
@@ -646,8 +551,9 @@ struct Waiter : IServiceNotification {
                 break;
             }
 
-            LOG(WARNING) << "Waited one second for " << mInterfaceName << "/" << mInstanceName;
-        } while (!timeout);
+            LOG(WARNING) << "Waited one second for " << mInterfaceName << "/" << mInstanceName
+                         << ". Waiting another...";
+        }
     }
 
     // Be careful when using this; after calling reset(), you must always try to retrieve
@@ -677,7 +583,7 @@ struct Waiter : IServiceNotification {
    private:
     const std::string mInterfaceName;
     const std::string mInstanceName;
-    sp<IServiceManager1_1> mSm;
+    const sp<IServiceManager1_1>& mSm;
     std::mutex mMutex;
     std::condition_variable mCondition;
     bool mRegistered = false;
@@ -688,7 +594,7 @@ struct Waiter : IServiceNotification {
 void waitForHwService(
         const std::string &interface, const std::string &instanceName) {
     sp<Waiter> waiter = new Waiter(interface, instanceName, defaultServiceManager1_1());
-    waiter->wait(false /* timeout */);
+    waiter->wait();
     waiter->done();
 }
 
@@ -727,30 +633,23 @@ sp<::android::hidl::base::V1_0::IBase> getRawServiceInternal(const std::string& 
                                                              const std::string& instance,
                                                              bool retry, bool getStub) {
     using Transport = ::android::hidl::manager::V1_0::IServiceManager::Transport;
+    using ::android::hidl::base::V1_0::IBase;
     using ::android::hidl::manager::V1_0::IServiceManager;
-    sp<Waiter> waiter;
 
-    sp<IServiceManager1_1> sm;
-    Transport transport = Transport::EMPTY;
-    if (kIsRecovery) {
-        transport = Transport::PASSTHROUGH;
-    } else {
-        sm = defaultServiceManager1_1();
-        if (sm == nullptr) {
-            ALOGE("getService: defaultServiceManager() is null");
-            return nullptr;
-        }
-
-        Return<Transport> transportRet = sm->getTransport(descriptor, instance);
-
-        if (!transportRet.isOk()) {
-            ALOGE("getService: defaultServiceManager()->getTransport returns %s",
-                  transportRet.description().c_str());
-            return nullptr;
-        }
-        transport = transportRet;
+    const sp<IServiceManager1_1> sm = defaultServiceManager1_1();
+    if (sm == nullptr) {
+        ALOGE("getService: defaultServiceManager() is null");
+        return nullptr;
     }
 
+    Return<Transport> transportRet = sm->getTransport(descriptor, instance);
+
+    if (!transportRet.isOk()) {
+        ALOGE("getService: defaultServiceManager()->getTransport returns %s",
+              transportRet.description().c_str());
+        return nullptr;
+    }
+    Transport transport = transportRet;
     const bool vintfHwbinder = (transport == Transport::HWBINDER);
     const bool vintfPassthru = (transport == Transport::PASSTHROUGH);
 
@@ -771,13 +670,9 @@ sp<::android::hidl::base::V1_0::IBase> getRawServiceInternal(const std::string& 
     const bool vintfLegacy = (transport == Transport::EMPTY);
 #endif  // ENFORCE_VINTF_MANIFEST
 
-    for (int tries = 0; !getStub && (vintfHwbinder || vintfLegacy); tries++) {
-        if (waiter == nullptr && tries > 0) {
-            waiter = new Waiter(descriptor, instance, sm);
-        }
-        if (waiter != nullptr) {
-            waiter->reset();  // don't reorder this -- see comments on reset()
-        }
+    sp<Waiter> waiter = new Waiter(descriptor, instance, sm);
+    while (!getStub && (vintfHwbinder || vintfLegacy)) {
+        waiter->reset(); // don't reorder this -- see comments on reset()
         Return<sp<IBase>> ret = sm->get(descriptor, instance);
         if (!ret.isOk()) {
             ALOGE("getService: defaultServiceManager()->get returns %s for %s/%s.",
@@ -790,9 +685,7 @@ sp<::android::hidl::base::V1_0::IBase> getRawServiceInternal(const std::string& 
                 details::canCastInterface(base.get(), descriptor.c_str(), true /* emitError */);
 
             if (canCastRet.isOk() && canCastRet) {
-                if (waiter != nullptr) {
-                    waiter->done();
-                }
+                waiter->done();
                 return base; // still needs to be wrapped by Bp class.
             }
 
@@ -802,15 +695,11 @@ sp<::android::hidl::base::V1_0::IBase> getRawServiceInternal(const std::string& 
         // In case of legacy or we were not asked to retry, don't.
         if (vintfLegacy || !retry) break;
 
-        if (waiter != nullptr) {
-            ALOGI("getService: Trying again for %s/%s...", descriptor.c_str(), instance.c_str());
-            waiter->wait(true /* timeout */);
-        }
+        ALOGI("getService: Trying again for %s/%s...", descriptor.c_str(), instance.c_str());
+        waiter->wait();
     }
 
-    if (waiter != nullptr) {
-        waiter->done();
-    }
+    waiter->done();
 
     if (getStub || vintfPassthru || vintfLegacy) {
         const sp<IServiceManager> pm = getPassthroughServiceManager();
@@ -826,33 +715,7 @@ sp<::android::hidl::base::V1_0::IBase> getRawServiceInternal(const std::string& 
     return nullptr;
 }
 
-status_t registerAsServiceInternal(const sp<IBase>& service, const std::string& name) {
-    if (service == nullptr) {
-        return UNEXPECTED_NULL;
-    }
+}; // namespace details
 
-    sp<IServiceManager1_2> sm = defaultServiceManager1_2();
-    if (sm == nullptr) {
-        return INVALID_OPERATION;
-    }
-
-    bool registered = false;
-    Return<void> ret = service->interfaceChain([&](const auto& chain) {
-        registered = sm->addWithChain(name.c_str(), service, chain).withDefault(false);
-    });
-
-    if (!ret.isOk()) {
-        LOG(ERROR) << "Could not retrieve interface chain: " << ret.description();
-    }
-
-    if (registered) {
-        onRegistrationImpl(getDescriptor(service.get()), name);
-    }
-
-    return registered ? OK : UNKNOWN_ERROR;
-}
-
-} // namespace details
-
-} // namespace hardware
-} // namespace android
+}; // namespace hardware
+}; // namespace android
