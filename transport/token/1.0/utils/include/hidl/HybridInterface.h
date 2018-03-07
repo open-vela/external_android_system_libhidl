@@ -240,10 +240,6 @@ status_t H2BConverter<HINTERFACE, INTERFACE, BNINTERFACE, GETTOKEN>::
         onTransact(
         uint32_t code, const Parcel& data, Parcel* reply, uint32_t flags) {
     if (code == GET_HAL_TOKEN) {
-        if (!data.enforceInterface(BaseInterface::getInterfaceDescriptor())) {
-            return BAD_TYPE;
-        }
-
         HalToken token;
         bool result;
         result = createHalToken(mBase, &token);

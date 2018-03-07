@@ -84,13 +84,17 @@ status_t handleTransportPoll(int fd);
 bool setMinSchedulerPolicy(const sp<::android::hidl::base::V1_0::IBase>& service,
                            int policy, int priority);
 
-/**
- * Returns whether two interfaces represent the same interface. References to interfaces in the same
- * process will always be equivalent. However, in order to compare a service that is a proxy to a
- * different process, its underlying structure may have to be checked.
- */
-bool interfacesEqual(const sp<::android::hidl::base::V1_0::IBase>& left,
-                     const sp<::android::hidl::base::V1_0::IBase>& right);
+template <typename ILeft,
+          typename IRight,
+          typename = std::enable_if_t<std::is_same<details::i_tag, typename ILeft::_hidl_tag>::value>,
+          typename = std::enable_if_t<std::is_same<details::i_tag, typename IRight::_hidl_tag>::value>>
+bool interfacesEqual(sp<ILeft> left, sp<IRight> right) {
+    if (left == nullptr || right == nullptr || !left->isRemote() || !right->isRemote()) {
+        return left == right;
+    }
+
+    return toBinder<ILeft>(left) == toBinder<IRight>(right);
+}
 
 namespace details {
 
@@ -125,7 +129,7 @@ Return<sp<IChild>> castInterface(sp<IParent> parent, const char* childIndicator,
     // TODO b/32001926 Needs to be fixed for socket mode.
     if (parent->isRemote()) {
         // binderized mode. Got BpChild. grab the remote and wrap it.
-        return sp<IChild>(new BpChild(getOrCreateCachedBinder(parent.get())));
+        return sp<IChild>(new BpChild(toBinder<IParent>(parent)));
     }
     // Passthrough mode. Got BnChild or BsChild.
     return sp<IChild>(static_cast<IChild *>(parent.get()));
@@ -145,7 +149,7 @@ sp<IType> getServiceInternal(const std::string& instance, bool retry, bool getSt
 
     if (base->isRemote()) {
         // getRawServiceInternal guarantees we get the proper class
-        return sp<IType>(new BpType(getOrCreateCachedBinder(base.get())));
+        return sp<IType>(new BpType(toBinder<IBase>(base)));
     }
 
     return IType::castFrom(base);
