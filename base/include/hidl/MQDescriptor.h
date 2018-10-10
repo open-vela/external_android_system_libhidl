@@ -59,12 +59,10 @@ enum MQFlavor : uint32_t {
 
 template <typename T, MQFlavor flavor>
 struct MQDescriptor {
-    // Takes ownership of handle
     MQDescriptor(
             const std::vector<GrantorDescriptor>& grantors,
             native_handle_t* nHandle, size_t size);
 
-    // Takes ownership of handle
     MQDescriptor(size_t bufferSize, native_handle_t* nHandle,
                  size_t messageSize, bool configureEventFlag = false);
 
