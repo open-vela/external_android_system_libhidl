@@ -16,7 +16,6 @@ cc_defaults {
     name: "libhidl-defaults",
     cflags: [
         "-Wall",
-        "-Wdocumentation", // since some users use this
         "-Werror",
         "-Wextra-semi",
     ],
