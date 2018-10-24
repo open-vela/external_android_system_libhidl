@@ -18,15 +18,9 @@ package android.hidl.manager@1.2;
 
 interface IClientCallback {
     /**
-     * This is called when there is a transition between having >= 1 clients and having 0 clients
-     * (or vice versa).
+     * Called when there are no clients remaining for the HAL registered with this service.
      *
      * @param registered binder 'server' registered with IServiceManager's registerClientCallback
-     * @param hasClients whether there are currently clients
-     *     true - when there are >= 1 clients. This must be called as soon as IServiceManager::get
-     *         is called (no race).
-     *     false - when there are 0 clients. This may be delayed if it is thought that another
-     *         may be used again soon.
      */
-    oneway onClients(interface registered, bool hasClients);
+    oneway onNoClients(interface registered);
 };
