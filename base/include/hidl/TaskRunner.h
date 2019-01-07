@@ -52,7 +52,9 @@ public:
      * Add a task. Return true if successful, false if
      * the queue's size exceeds limit or t doesn't contain a callable target.
      */
-    bool push(const Task &t);
+    inline bool push(const Task &t) {
+        return (mQueue != nullptr) && (!!t) && this->mQueue->push(t);
+    }
 
 private:
     std::shared_ptr<SynchronizedQueue<Task>> mQueue;
