@@ -148,8 +148,10 @@ namespace details {
         return_status(const return_status &) = delete;
         return_status &operator=(const return_status &) = delete;
 
-        return_status(return_status&& other) noexcept { *this = std::move(other); }
-        return_status& operator=(return_status&& other) noexcept;
+        return_status(return_status &&other) {
+            *this = std::move(other);
+        }
+        return_status &operator=(return_status &&other);
 
         ~return_status();
 
@@ -195,8 +197,8 @@ public:
     // move-able.
     // precondition: "this" has checked status
     // postcondition: other is safe to destroy after moving to *this.
-    Return(Return&& other) noexcept = default;
-    Return& operator=(Return&&) noexcept = default;
+    Return(Return &&other) = default;
+    Return &operator=(Return &&) = default;
 
     ~Return() = default;
 
@@ -224,8 +226,8 @@ public:
     // move-able.
     // precondition: "this" has checked status
     // postcondition: other is safe to destroy after moving to *this.
-    Return(Return&& other) noexcept = default;
-    Return& operator=(Return&&) noexcept = default;
+    Return(Return &&other) = default;
+    Return &operator=(Return &&) = default;
 
     ~Return() = default;
 
