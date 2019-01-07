@@ -17,8 +17,7 @@
 #ifndef _FMSGQ_DESCRIPTOR_H
 #define _FMSGQ_DESCRIPTOR_H
 
-#include <unistd.h>
-
+#include <android-base/macros.h>
 #include <cutils/native_handle.h>
 #include <hidl/HidlInternal.h>
 #include <hidl/HidlSupport.h>
