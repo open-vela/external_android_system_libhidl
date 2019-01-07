@@ -21,7 +21,7 @@ cc_library_shared {
     },
     compile_multilib: "both",
     relative_install_path: "hw",
-    defaults: ["libhidl-defaults"],
+    cflags: libhidl_flags,
     srcs: [
         "AshmemMapper.cpp",
         "AshmemMemory.cpp",
@@ -29,6 +29,7 @@ cc_library_shared {
     ],
     shared_libs: [
         "libcutils",
+        "libhardware",
         "libhwbinder",
         "libbase",
         "liblog",

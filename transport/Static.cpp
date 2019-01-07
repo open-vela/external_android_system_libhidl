@@ -29,8 +29,8 @@ namespace details {
 Mutex gDefaultServiceManagerLock;
 sp<android::hidl::manager::V1_0::IServiceManager> gDefaultServiceManager;
 
-// Deprecated; kept for ABI compatibility. Use getBnConstructorMap.
-BnConstructorMap gBnConstructorMap{};
+ConcurrentMap<std::string, std::function<sp<IBinder>(void *)>>
+        gBnConstructorMap{};
 
 ConcurrentMap<const ::android::hidl::base::V1_0::IBase*, wp<::android::hardware::BHwBinder>>
     gBnMap{};
@@ -39,20 +39,8 @@ ConcurrentMap<const ::android::hidl::base::V1_0::IBase*, wp<::android::hardware:
 ConcurrentMap<wp<::android::hidl::base::V1_0::IBase>, SchedPrio> gServicePrioMap{};
 ConcurrentMap<wp<::android::hidl::base::V1_0::IBase>, bool> gServiceSidMap{};
 
-// Deprecated; kept for ABI compatibility. Use getBsConstructorMap.
-BsConstructorMap gBsConstructorMap{};
-
-// For static executables, it is not guaranteed that gBnConstructorMap are initialized before
-// used in HAL definition libraries.
-BnConstructorMap& getBnConstructorMap() {
-    static BnConstructorMap map{};
-    return map;
-}
-
-BsConstructorMap& getBsConstructorMap() {
-    static BsConstructorMap map{};
-    return map;
-}
+ConcurrentMap<std::string, std::function<sp<::android::hidl::base::V1_0::IBase>(void *)>>
+        gBsConstructorMap;
 
 }  // namespace details
 }  // namespace hardware

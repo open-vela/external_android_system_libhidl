@@ -16,8 +16,6 @@
 #include <hidl/HidlTransportSupport.h>
 #include <hidl/HidlBinderSupport.h>
 
-#include <android/hidl/manager/1.0/IServiceManager.h>
-
 namespace android {
 namespace hardware {
 
@@ -28,14 +26,6 @@ void configureRpcThreadpool(size_t maxThreads, bool callerWillJoin) {
 void joinRpcThreadpool() {
     // TODO(b/32756130) this should be transport-dependent
     joinBinderRpcThreadpool();
-}
-
-int setupTransportPolling() {
-    return setupBinderPolling();
-}
-
-status_t handleTransportPoll(int /*fd*/) {
-    return handleBinderPoll();
 }
 
 // TODO(b/122472540): only store one data item per object
@@ -95,16 +85,5 @@ bool setRequestingSid(const sp<::android::hidl::base::V1_0::IBase>& service, boo
     return true;
 }
 
-namespace details {
-int32_t getPidIfSharable() {
-#if LIBHIDL_TARGET_DEBUGGABLE
-    return getpid();
-#else
-    using android::hidl::manager::V1_0::IServiceManager;
-    return static_cast<int32_t>(IServiceManager::PidConstant::NO_PID);
-#endif
 }
-}  // namespace details
-
-}  // namespace hardware
-}  // namespace android
+}
