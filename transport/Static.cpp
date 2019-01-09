@@ -17,6 +17,7 @@
 // All static variables go here, to control initialization and
 // destruction order in the library.
 
+#include <InternalStatic.h>
 #include <hidl/Static.h>
 
 #include <android/hidl/manager/1.0/IServiceManager.h>
@@ -26,18 +27,28 @@ namespace android {
 namespace hardware {
 namespace details {
 
-Mutex gDefaultServiceManagerLock;
-sp<android::hidl::manager::V1_0::IServiceManager> gDefaultServiceManager;
+// Deprecated; kept for ABI compatibility. Use getBnConstructorMap.
+BnConstructorMap gBnConstructorMap{};
 
-ConcurrentMap<std::string, std::function<sp<IBinder>(void *)>>
-        gBnConstructorMap{};
+ConcurrentMap<const ::android::hidl::base::V1_0::IBase*, wp<::android::hardware::BHwBinder>>
+    gBnMap{};
 
-// TODO(b/122472540): replace with single, hidden map
 ConcurrentMap<wp<::android::hidl::base::V1_0::IBase>, SchedPrio> gServicePrioMap{};
-ConcurrentMap<wp<::android::hidl::base::V1_0::IBase>, bool> gServiceSidMap{};
 
-ConcurrentMap<std::string, std::function<sp<::android::hidl::base::V1_0::IBase>(void *)>>
-        gBsConstructorMap;
+// Deprecated; kept for ABI compatibility. Use getBsConstructorMap.
+BsConstructorMap gBsConstructorMap{};
+
+// For static executables, it is not guaranteed that gBnConstructorMap are initialized before
+// used in HAL definition libraries.
+BnConstructorMap& getBnConstructorMap() {
+    static BnConstructorMap map{};
+    return map;
+}
+
+BsConstructorMap& getBsConstructorMap() {
+    static BsConstructorMap map{};
+    return map;
+}
 
 }  // namespace details
 }  // namespace hardware

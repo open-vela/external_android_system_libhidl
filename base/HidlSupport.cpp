@@ -56,7 +56,7 @@ hidl_handle::hidl_handle(const hidl_handle &other) {
 }
 
 // move constructor.
-hidl_handle::hidl_handle(hidl_handle &&other) {
+hidl_handle::hidl_handle(hidl_handle&& other) noexcept {
     mOwnsHandle = false;
     *this = std::move(other);
 }
@@ -70,7 +70,7 @@ hidl_handle &hidl_handle::operator=(const hidl_handle &other) {
     if (other.mHandle != nullptr) {
         mHandle = native_handle_clone(other.mHandle);
         if (mHandle == nullptr) {
-            LOG(FATAL) << "Failed to clone native_handle in hidl_handle.";
+            PLOG(FATAL) << "Failed to clone native_handle in hidl_handle";
         }
         mOwnsHandle = true;
     } else {
@@ -87,7 +87,7 @@ hidl_handle &hidl_handle::operator=(const native_handle_t *native_handle) {
     return *this;
 }
 
-hidl_handle &hidl_handle::operator=(hidl_handle &&other) {
+hidl_handle& hidl_handle::operator=(hidl_handle&& other) noexcept {
     if (this != &other) {
         freeHandle();
         mHandle = other.mHandle;
@@ -167,11 +167,11 @@ hidl_string::hidl_string(const std::string &s) : hidl_string() {
     copyFrom(s.c_str(), s.size());
 }
 
-hidl_string::hidl_string(hidl_string &&other): hidl_string() {
+hidl_string::hidl_string(hidl_string&& other) noexcept : hidl_string() {
     moveFrom(std::forward<hidl_string>(other));
 }
 
-hidl_string &hidl_string::operator=(hidl_string &&other) {
+hidl_string& hidl_string::operator=(hidl_string&& other) noexcept {
     if (this != &other) {
         clear();
         moveFrom(std::forward<hidl_string>(other));
@@ -217,8 +217,8 @@ std::ostream& operator<<(std::ostream& os, const hidl_string& str) {
 void hidl_string::copyFrom(const char *data, size_t size) {
     // assume my resources are freed.
 
-    if (size > UINT32_MAX) {
-        LOG(FATAL) << "string size can't exceed 2^32 bytes.";
+    if (size >= UINT32_MAX) {
+        LOG(FATAL) << "string size can't exceed 2^32 bytes: " << size;
     }
     char *buf = (char *)malloc(size + 1);
     memcpy(buf, data, size);
@@ -252,8 +252,16 @@ void hidl_string::clear() {
 
 void hidl_string::setToExternal(const char *data, size_t size) {
     if (size > UINT32_MAX) {
-        LOG(FATAL) << "string size can't exceed 2^32 bytes.";
+        LOG(FATAL) << "string size can't exceed 2^32 bytes: " << size;
     }
+
+    // When the binder driver copies this data into its buffer, it must
+    // have a zero byte there because the remote process will have a pointer
+    // directly into the read-only binder buffer. If we manually copy the
+    // data now to add a zero, then we lose the efficiency of this method.
+    // Checking here (it's also checked in the parceling code later).
+    CHECK(data[size] == '\0');
+
     clear();
 
     mBuffer = data;
@@ -272,6 +280,42 @@ size_t hidl_string::size() const {
 bool hidl_string::empty() const {
     return mSize == 0;
 }
+
+sp<HidlMemory> HidlMemory::getInstance(const hidl_memory& mem) {
+    sp<HidlMemory> instance = new HidlMemory();
+    instance->hidl_memory::operator=(mem);
+    return instance;
+}
+
+sp<HidlMemory> HidlMemory::getInstance(hidl_memory&& mem) {
+    sp<HidlMemory> instance = new HidlMemory();
+    instance->hidl_memory::operator=(std::move(mem));
+    return instance;
+}
+
+sp<HidlMemory> HidlMemory::getInstance(const hidl_string& name, int fd, uint64_t size) {
+    native_handle_t* handle = native_handle_create(1, 0);
+    if (!handle) {
+        close(fd);
+        LOG(ERROR) << "native_handle_create fails";
+        return new HidlMemory();
+    }
+    handle->data[0] = fd;
+
+    hidl_handle hidlHandle;
+    hidlHandle.setTo(handle, true /* shouldOwn */);
+
+    sp<HidlMemory> instance = new HidlMemory(name, std::move(hidlHandle), size);
+    return instance;
+}
+
+HidlMemory::HidlMemory() : hidl_memory() {}
+
+HidlMemory::HidlMemory(const hidl_string& name, hidl_handle&& handle, size_t size)
+        : hidl_memory(name, std::move(handle), size) {}
+
+// it's required to have at least one out-of-line method to avoid weak vtable
+HidlMemory::~HidlMemory() {}
 
 }  // namespace hardware
 }  // namespace android

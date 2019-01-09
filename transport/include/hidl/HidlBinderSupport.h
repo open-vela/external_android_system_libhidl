@@ -24,11 +24,10 @@
 #include <hidl/HidlSupport.h>
 #include <hidl/HidlTransportUtils.h>
 #include <hidl/MQDescriptor.h>
-#include <hidl/Static.h>
 #include <hwbinder/IBinder.h>
-#include <hwbinder/IPCThreadState.h>
 #include <hwbinder/Parcel.h>
-#include <hwbinder/ProcessState.h>
+#include <log/log.h>  // TODO(b/65843592): remove. Too many users depending on this transitively.
+
 // Defines functions for hidl_string, hidl_version, Status, hidl_vec, MQDescriptor,
 // etc. to interact with Parcel.
 
@@ -40,23 +39,22 @@ namespace hardware {
 // DeathRecipient interface.
 struct hidl_binder_death_recipient : IBinder::DeathRecipient {
     hidl_binder_death_recipient(const sp<hidl_death_recipient> &recipient,
-            uint64_t cookie, const sp<::android::hidl::base::V1_0::IBase> &base) :
-        mRecipient(recipient), mCookie(cookie), mBase(base) {
-    }
-    virtual void binderDied(const wp<IBinder>& /*who*/) {
-        sp<hidl_death_recipient> recipient = mRecipient.promote();
-        if (recipient != nullptr) {
-            recipient->serviceDied(mCookie, mBase);
-        }
-    }
-    wp<hidl_death_recipient> getRecipient() {
-        return mRecipient;
-    }
+            uint64_t cookie, const sp<::android::hidl::base::V1_0::IBase> &base);
+    virtual void binderDied(const wp<IBinder>& /*who*/);
+    wp<hidl_death_recipient> getRecipient();
 private:
     wp<hidl_death_recipient> mRecipient;
     uint64_t mCookie;
     wp<::android::hidl::base::V1_0::IBase> mBase;
 };
+
+// ---------------------- hidl_handle
+
+status_t readEmbeddedFromParcel(const hidl_handle &handle,
+        const Parcel &parcel, size_t parentHandle, size_t parentOffset);
+
+status_t writeEmbeddedToParcel(const hidl_handle &handle,
+        Parcel *parcel, size_t parentHandle, size_t parentOffset);
 
 // ---------------------- hidl_memory
 
@@ -310,31 +308,20 @@ static status_t writeReferenceToParcel(
 
 // ---------------------- support for casting interfaces
 
+// Constructs a binder for this interface and caches it. If it has already been created
+// then it returns it.
+sp<IBinder> getOrCreateCachedBinder(::android::hidl::base::V1_0::IBase* ifacePtr);
+
 // Construct a smallest possible binder from the given interface.
 // If it is remote, then its remote() will be retrieved.
 // Otherwise, the smallest possible BnChild is found where IChild is a subclass of IType
 // and iface is of class IChild. BnChild will be used to wrapped the given iface.
 // Return nullptr if iface is null or any failure.
-template <typename IType, typename ProxyType>
+template <typename IType,
+          typename = std::enable_if_t<std::is_same<details::i_tag, typename IType::_hidl_tag>::value>>
 sp<IBinder> toBinder(sp<IType> iface) {
     IType *ifacePtr = iface.get();
-    if (ifacePtr == nullptr) {
-        return nullptr;
-    }
-    if (ifacePtr->isRemote()) {
-        return ::android::hardware::IInterface::asBinder(static_cast<ProxyType *>(ifacePtr));
-    } else {
-        std::string myDescriptor = details::getDescriptor(ifacePtr);
-        if (myDescriptor.empty()) {
-            // interfaceDescriptor fails
-            return nullptr;
-        }
-        auto func = details::gBnConstructorMap.get(myDescriptor, nullptr);
-        if (!func) {
-            return nullptr;
-        }
-        return sp<IBinder>(func(static_cast<void *>(ifacePtr)));
-    }
+    return getOrCreateCachedBinder(ifacePtr);
 }
 
 template <typename IType, typename ProxyType, typename StubType>
@@ -359,6 +346,10 @@ sp<IType> fromBinder(const sp<IBinder>& binderIface) {
 
 void configureBinderRpcThreadpool(size_t maxThreads, bool callerWillJoin);
 void joinBinderRpcThreadpool();
+int setupBinderPolling();
+status_t handleBinderPoll();
+
+void addPostCommandTask(const std::function<void(void)> task);
 
 }  // namespace hardware
 }  // namespace android
