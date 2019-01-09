@@ -15,15 +15,15 @@
 cc_binary {
     name: "android.hidl.allocator@1.0-service",
     relative_install_path: "hw",
-    cflags: libhidl_flags,
+    defaults: ["libhidl-defaults"],
     srcs: [
         "AshmemAllocator.cpp",
         "service.cpp"
     ],
     init_rc: ["android.hidl.allocator@1.0-service.rc"],
+    vintf_fragments: ["android.hidl.allocator@1.0-service.xml"],
 
     shared_libs: [
-        "android.hidl.base@1.0",
         "android.hidl.allocator@1.0",
         "libhidlbase",
         "libhidltransport",

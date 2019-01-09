@@ -11,3 +11,18 @@ bddab6184d7a346da6a07dc0828cf19a696f4caa3611c51f2e14565a14b40fd9 android.hidl.ba
 2b885b5dec97391c82f35e64180686dc4c8f78b2b0a01732f8536385654f27c8 android.hidl.memory@1.0::IMapper
 4632246017013e75536fa6ee47db286b24a323fb92c37c6b14bb0ab796b7a16b android.hidl.memory@1.0::IMemory
 7c9fe352af04af659bd51ab6f5495115575bc063ddf684fc6d0dec1f4a4b4b7c android.hidl.token@1.0::ITokenManager
+
+# HALs released in Android O-MR1
+
+0b94dc876f749ed24a98f61c41d46ad75a27511163f1968a084213a33c684ef6 android.hidl.manager@1.1::IServiceManager
+
+# HALs released in Android P
+445da29052612c57db3a8504f6395814277dc3826ee0f166cc732031b35af496 android.hidl.memory.block@1.0::types
+2e19301ceb87fb0696cd8268fab9c41f95d23c7392d35bc575daaa6eb32807eb android.hidl.memory.token@1.0::IMemoryToken
+
+# ABI preserving changes to HALs during Android Q
+85394f8a0d15e7fb2ee45c52d1fb8b8fd3c13c333e63c78c4aa1ff86840cf6dc android.hidl.manager@1.0::IServiceManager
+fcde1d0788066a62d5766f4dc19d4c1ec76967d5ddb636f59ccc66603460bcf8 android.hidl.manager@1.0::IServiceNotification
+
+# Clarification for b/67503915
+ec7fd79ed02dfa85bc499426adae3ebe23ef0524f3cd6957139324b83b18ca4c android.hidl.base@1.0::IBase
