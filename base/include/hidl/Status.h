@@ -143,20 +143,17 @@ namespace details {
         void assertOk() const;
     public:
         return_status() {}
-        return_status(const Status& s) : mStatus(s) {}
+        return_status(Status s) : mStatus(s) {}
 
         return_status(const return_status &) = delete;
         return_status &operator=(const return_status &) = delete;
 
-        return_status(return_status&& other) noexcept { *this = std::move(other); }
-        return_status& operator=(return_status&& other) noexcept;
+        return_status(return_status &&other) {
+            *this = std::move(other);
+        }
+        return_status &operator=(return_status &&other);
 
         ~return_status();
-
-        bool isOkUnchecked() const {
-            // someone else will have to check
-            return mStatus.isOk();
-        }
 
         bool isOk() const {
             mCheckedStatus = true;
@@ -164,17 +161,9 @@ namespace details {
         }
 
         // Check if underlying error is DEAD_OBJECT.
-        // Check mCheckedStatus only if this method returns true.
+        // Does not set mCheckedStatus.
         bool isDeadObject() const {
-            bool dead = mStatus.transactionError() == DEAD_OBJECT;
-
-            // This way, if you only check isDeadObject your process will
-            // only be killed for more serious unchecked errors
-            if (dead) {
-                mCheckedStatus = true;
-            }
-
-            return dead;
+            return mStatus.transactionError() == DEAD_OBJECT;
         }
 
         // For debugging purposes only
@@ -195,8 +184,8 @@ public:
     // move-able.
     // precondition: "this" has checked status
     // postcondition: other is safe to destroy after moving to *this.
-    Return(Return&& other) noexcept = default;
-    Return& operator=(Return&&) noexcept = default;
+    Return(Return &&other) = default;
+    Return &operator=(Return &&) = default;
 
     ~Return() = default;
 
@@ -224,8 +213,8 @@ public:
     // move-able.
     // precondition: "this" has checked status
     // postcondition: other is safe to destroy after moving to *this.
-    Return(Return&& other) noexcept = default;
-    Return& operator=(Return&&) noexcept = default;
+    Return(Return &&other) = default;
+    Return &operator=(Return &&) = default;
 
     ~Return() = default;
 
@@ -243,7 +232,7 @@ public:
 template<> class Return<void> : public details::return_status {
 public:
     Return() : details::return_status() {}
-    Return(const Status& s) : details::return_status(s) {}
+    Return(Status s) : details::return_status(s) {}
 
     // move-able.
     // precondition: "this" has checked status
