@@ -3,6 +3,7 @@
 hidl_interface {
     name: "android.hidl.manager@1.1",
     root: "android.hidl",
+    core_interface: true,
     vndk: {
         enabled: true,
     },
