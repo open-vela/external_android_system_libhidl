@@ -53,7 +53,7 @@ static std::string statusToString(status_t s) {
     }
     std::string str = std::to_string(s);
     char *err = strerror(-s);
-    if (err != nullptr) {
+    if (err != NULL) {
         str.append(1, ' ').append(err);
     }
     return str;
@@ -82,17 +82,11 @@ Status Status::ok() {
 }
 
 Status Status::fromExceptionCode(int32_t exceptionCode) {
-    if (exceptionCode == EX_TRANSACTION_FAILED) {
-        return Status(exceptionCode, FAILED_TRANSACTION);
-    }
     return Status(exceptionCode, OK);
 }
 
 Status Status::fromExceptionCode(int32_t exceptionCode,
                                  const char *message) {
-    if (exceptionCode == EX_TRANSACTION_FAILED) {
-        return Status(exceptionCode, FAILED_TRANSACTION, message);
-    }
     return Status(exceptionCode, OK, message);
 }
 
@@ -113,7 +107,7 @@ Status::Status(int32_t exceptionCode, int32_t errorCode, const char *message)
 
 void Status::setException(int32_t ex, const char *message) {
     mException = ex;
-    mErrorCode = ex == EX_TRANSACTION_FAILED ? FAILED_TRANSACTION : NO_ERROR;
+    mErrorCode = NO_ERROR;  // an exception, not a transaction failure.
     mMessage = message;
 }
 
@@ -156,7 +150,7 @@ namespace details {
         }
     }
 
-    return_status& return_status::operator=(return_status&& other) noexcept {
+    return_status &return_status::operator=(return_status &&other) {
         if (!mCheckedStatus && !isOk()) {
             LOG(FATAL) << "Failed HIDL return status not checked: " << description();
         }
