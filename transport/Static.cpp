@@ -17,6 +17,7 @@
 // All static variables go here, to control initialization and
 // destruction order in the library.
 
+#include <InternalStatic.h>
 #include <hidl/Static.h>
 
 #include <android/hidl/manager/1.0/IServiceManager.h>
@@ -25,9 +26,6 @@
 namespace android {
 namespace hardware {
 namespace details {
-
-Mutex gDefaultServiceManagerLock;
-sp<android::hidl::manager::V1_0::IServiceManager> gDefaultServiceManager;
 
 // Deprecated; kept for ABI compatibility. Use getBnConstructorMap.
 BnConstructorMap gBnConstructorMap{};
