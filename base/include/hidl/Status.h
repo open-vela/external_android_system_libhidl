@@ -143,8 +143,9 @@ namespace details {
 
         template <typename T, typename U>
         friend Return<U> StatusOf(const Return<T> &other);
-    public:
+    protected:
         void assertOk() const;
+    public:
         return_status() {}
         return_status(const Status& s) : mStatus(s) {}
 
@@ -187,26 +188,6 @@ namespace details {
         }
     };
 }  // namespace details
-
-enum class HidlReturnRestriction {
-    // Okay to ignore checking transport errors. This would instead rely on init to reset state
-    // after an error in the underlying transport. This is the default and expected for most
-    // usecases.
-    NONE,
-    // Log when there is an unchecked error.
-    ERROR_IF_UNCHECKED,
-    // Fatal when there is an unchecked error.
-    FATAL_IF_UNCHECKED,
-};
-
-/**
- * This should be called during process initialization (e.g. before binder threadpool is created).
- *
- * Note: default of HidlReturnRestriction::NONE should be good for most usecases. See above.
- *
- * The restriction will be applied when Return objects are deconstructed.
- */
-void setProcessHidlReturnRestriction(HidlReturnRestriction restriction);
 
 template<typename T> class Return : public details::return_status {
 private:
