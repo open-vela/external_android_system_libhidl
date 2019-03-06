@@ -18,7 +18,6 @@
 #include <android-base/logging.h>
 
 #include <hidl/Status.h>
-#include <utils/CallStack.h>
 
 #include <unordered_map>
 
@@ -143,11 +142,6 @@ std::ostream& operator<< (std::ostream& stream, const Status& s) {
     return stream;
 }
 
-static HidlReturnRestriction gReturnRestriction = HidlReturnRestriction::NONE;
-void setProcessHidlReturnRestriction(HidlReturnRestriction restriction) {
-    gReturnRestriction = restriction;
-}
-
 namespace details {
     void return_status::assertOk() const {
         if (!isOk()) {
@@ -157,21 +151,8 @@ namespace details {
 
     return_status::~return_status() {
         // mCheckedStatus must be checked before isOk since isOk modifies mCheckedStatus
-        if (mCheckedStatus) return;
-
-        if (!isOk()) {
+        if (!mCheckedStatus && !isOk()) {
             LOG(FATAL) << "Failed HIDL return status not checked: " << description();
-        }
-
-        if (gReturnRestriction == HidlReturnRestriction::NONE) {
-            return;
-        }
-
-        if (gReturnRestriction == HidlReturnRestriction::ERROR_IF_UNCHECKED) {
-            LOG(ERROR) << "Failed to check status of HIDL Return.";
-            CallStack::logStack("unchecked HIDL return", CallStack::getCurrent(10).get(), ANDROID_LOG_ERROR);
-        } else {
-            LOG(FATAL) << "Failed to check status of HIDL Return.";
         }
     }
 
