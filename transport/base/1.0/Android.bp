@@ -10,6 +10,9 @@ hidl_interface {
         "types.hal",
         "IBase.hal",
     ],
+    types: [
+        "DebugInfo",
+    ],
     gen_java: true,
 }
 
