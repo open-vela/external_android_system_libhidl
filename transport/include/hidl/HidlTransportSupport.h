@@ -85,6 +85,14 @@ bool setMinSchedulerPolicy(const sp<::android::hidl::base::V1_0::IBase>& service
                            int policy, int priority);
 
 /**
+ * Returns whether two interfaces represent the same interface. References to interfaces in the same
+ * process will always be equivalent. However, in order to compare a service that is a proxy to a
+ * different process, its underlying structure may have to be checked.
+ */
+bool interfacesEqual(const sp<::android::hidl::base::V1_0::IBase>& left,
+                     const sp<::android::hidl::base::V1_0::IBase>& right);
+
+/**
  * Sets whether or not this object should request security contexts to be populatd for incoming
  * calls (e.g. with getCallingSid).
  *
@@ -95,14 +103,6 @@ bool setMinSchedulerPolicy(const sp<::android::hidl::base::V1_0::IBase>& service
  * @param requesting whether or not to request sid (default is false)
  */
 bool setRequestingSid(const sp<::android::hidl::base::V1_0::IBase>& service, bool requesting);
-
-/**
- * Returns whether two interfaces represent the same interface. References to interfaces in the same
- * process will always be equivalent. However, in order to compare a service that is a proxy to a
- * different process, its underlying structure may have to be checked.
- */
-bool interfacesEqual(const sp<::android::hidl::base::V1_0::IBase>& left,
-                     const sp<::android::hidl::base::V1_0::IBase>& right);
 
 namespace details {
 
