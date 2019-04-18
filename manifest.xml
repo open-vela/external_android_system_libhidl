@@ -2,10 +2,19 @@
     <hal>
         <name>android.hidl.manager</name>
         <transport>hwbinder</transport>
-        <version>1.2</version>
+        <version>1.1</version>
         <interface>
             <name>IServiceManager</name>
             <instance>default</instance>
+        </interface>
+    </hal>
+    <hal>
+        <name>android.hidl.allocator</name>
+        <transport>hwbinder</transport>
+        <version>1.0</version>
+        <interface>
+            <name>IAllocator</name>
+            <instance>ashmem</instance>
         </interface>
     </hal>
     <hal>
@@ -53,10 +62,10 @@
             <instance>default</instance>
         </interface>
     </hal>
-    <hal>
+        <hal format="hidl">
         <name>android.system.net.netd</name>
         <transport>hwbinder</transport>
-        <version>1.1</version>
+        <version>1.0</version>
         <interface>
             <name>INetd</name>
             <instance>default</instance>
@@ -70,6 +79,15 @@
             <name>IKeystore</name>
             <instance>default</instance>
         </interface>
+    </hal>
+    <hal>
+      <name>android.hardware.graphics.composer</name>
+      <transport>hwbinder</transport>
+      <version>2.1</version>
+      <interface>
+          <name>IComposer</name>
+          <instance>vr</instance>
+      </interface>
     </hal>
     <hal format="native">
         <name>netutils-wrapper</name>

@@ -12,15 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-cc_library {
+cc_library_shared {
     name: "libhidlbase",
-    recovery_available: true,
     vendor_available: true,
     vndk: {
         enabled: true,
         support_system_process: true,
     },
-    defaults: ["libhidl-defaults"],
+    cflags: libhidl_flags,
     shared_libs: [
         "libbase",
         "libcutils",
@@ -34,6 +33,7 @@ cc_library {
     local_include_dirs: ["include"],
     export_include_dirs: ["include"],
 
+    clang: true,
     sanitize: {
         misc_undefined: ["integer"],
     },
