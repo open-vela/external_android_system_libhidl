@@ -14,23 +14,17 @@
 
 cc_library {
     name: "android.hidl.token@1.0-utils",
-    defaults: ["libhidl-defaults"],
-    vendor_available: true,
-    vndk: {
-        enabled: true,
-    },
-    double_loadable: true,
 
     srcs: [
         "HybridInterface.cpp",
     ],
 
     shared_libs: [
-        "android.hidl.token@1.0",
-        "libbinder",
-        "libhidlbase",
-        "liblog",
         "libutils",
+        "libbinder",
+        "liblog",
+        "libhidlbase",
+        "android.hidl.token@1.0",
     ],
 
     export_shared_lib_headers: [
@@ -41,5 +35,7 @@ cc_library {
     export_include_dirs: [
         "include"
     ],
+
+    clang: true,
 }
 
