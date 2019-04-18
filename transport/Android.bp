@@ -12,22 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-hidl_package_root {
-    name: "android.hidl",
-}
+subdirs = [
+    "allocator/1.0",
+    "allocator/1.0/default",
+    "base/1.0",
+    "manager/1.0",
+    "memory/1.0",
+    "memory/1.0/default",
+    "token/1.0",
+    "token/1.0/utils",
+]
 
-cc_library {
+cc_library_shared {
     name: "libhidltransport",
-    recovery_available: true,
     vendor_available: true,
-    vndk: {
-        enabled: true,
-        support_system_process: true,
-    },
-    defaults: [
-        "libhidl-defaults",
-        "hidl-module-defaults",
-    ],
+    cflags: libhidl_flags,
     shared_libs: [
         "libbase",
         "liblog",
@@ -35,9 +34,9 @@ cc_library {
         "libhidlbase",
         "libhwbinder",
         "libcutils",
-        "libvndksupport",
     ],
     export_shared_lib_headers: [
+        "libbase",
         "libutils",
         "libhidlbase",
     ],
@@ -46,29 +45,20 @@ cc_library {
 
     generated_sources: [
         "android.hidl.manager@1.0_genc++",
-        "android.hidl.manager@1.1_genc++",
-        "android.hidl.manager@1.2_genc++",
         "android.hidl.base@1.0_genc++"
     ],
     generated_headers: [
         "android.hidl.manager@1.0_genc++_headers",
-        "android.hidl.manager@1.1_genc++_headers",
-        "android.hidl.manager@1.2_genc++_headers",
         "android.hidl.base@1.0_genc++_headers"
     ],
     export_generated_headers: [
         "android.hidl.manager@1.0_genc++_headers",
-        "android.hidl.manager@1.1_genc++_headers",
-        "android.hidl.manager@1.2_genc++_headers",
         "android.hidl.base@1.0_genc++_headers"
     ],
 
     srcs: [
         "HidlBinderSupport.cpp",
-        "HidlLazyUtils.cpp",
-        "HidlPassthroughSupport.cpp",
         "HidlTransportSupport.cpp",
-        "HidlTransportUtils.cpp",
         "ServiceManagement.cpp",
         "Static.cpp"
     ],
@@ -76,15 +66,6 @@ cc_library {
     product_variables: {
         debuggable: {
             cflags: ["-DLIBHIDL_TARGET_DEBUGGABLE"],
-        },
-        enforce_vintf_manifest: {
-            cflags: ["-DENFORCE_VINTF_MANIFEST"]
-        },
-    },
-
-    target: {
-        recovery: {
-            exclude_shared_libs: ["libvndksupport"],
         },
     },
 }
