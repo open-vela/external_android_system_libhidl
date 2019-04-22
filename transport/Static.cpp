@@ -28,28 +28,27 @@ namespace hardware {
 namespace details {
 
 // Deprecated; kept for ABI compatibility. Use getBnConstructorMap.
-DoNotDestruct<BnConstructorMap> gBnConstructorMap{};
+BnConstructorMap gBnConstructorMap{};
 
-DoNotDestruct<ConcurrentMap<const ::android::hidl::base::V1_0::IBase*,
-                            wp<::android::hardware::BHwBinder>>>
-        gBnMap{};
+ConcurrentMap<const ::android::hidl::base::V1_0::IBase*, wp<::android::hardware::BHwBinder>>
+    gBnMap{};
 
 // TODO(b/122472540): replace with single, hidden map
-DoNotDestruct<ConcurrentMap<wp<::android::hidl::base::V1_0::IBase>, SchedPrio>> gServicePrioMap{};
-DoNotDestruct<ConcurrentMap<wp<::android::hidl::base::V1_0::IBase>, bool>> gServiceSidMap{};
+ConcurrentMap<wp<::android::hidl::base::V1_0::IBase>, SchedPrio> gServicePrioMap{};
+ConcurrentMap<wp<::android::hidl::base::V1_0::IBase>, bool> gServiceSidMap{};
 
 // Deprecated; kept for ABI compatibility. Use getBsConstructorMap.
-DoNotDestruct<BsConstructorMap> gBsConstructorMap{};
+BsConstructorMap gBsConstructorMap{};
 
 // For static executables, it is not guaranteed that gBnConstructorMap are initialized before
 // used in HAL definition libraries.
 BnConstructorMap& getBnConstructorMap() {
-    static BnConstructorMap& map = *new BnConstructorMap();
+    static BnConstructorMap map{};
     return map;
 }
 
 BsConstructorMap& getBsConstructorMap() {
-    static BsConstructorMap& map = *new BsConstructorMap();
+    static BsConstructorMap map{};
     return map;
 }
 
