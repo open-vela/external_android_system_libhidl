@@ -26,12 +26,10 @@ namespace android {
 namespace hardware {
 namespace details {
 
-// TODO(b/69122224): remove this
 // deprecated; use getBnConstructorMap instead.
-extern DoNotDestruct<BnConstructorMap> gBnConstructorMap;
-// TODO(b/69122224): remove this
+extern BnConstructorMap gBnConstructorMap;
 // deprecated; use getBsConstructorMap instead.
-extern DoNotDestruct<BsConstructorMap> gBsConstructorMap;
+extern BsConstructorMap gBsConstructorMap;
 
 }  // namespace details
 }  // namespace hardware
