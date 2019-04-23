@@ -137,10 +137,11 @@ void hidl_handle::freeHandle() {
 
 static const char *const kEmptyString = "";
 
-hidl_string::hidl_string()
-    : mBuffer(kEmptyString),
-      mSize(0),
-      mOwnsBuffer(false) {
+hidl_string::hidl_string() {
+    memset(this, 0, sizeof(*this));
+    // mSize is zero
+    // mOwnsBuffer is false
+    mBuffer = kEmptyString;
 }
 
 hidl_string::~hidl_string() {
