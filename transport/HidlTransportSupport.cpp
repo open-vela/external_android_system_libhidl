@@ -44,9 +44,7 @@ status_t handleTransportPoll(int /*fd*/) {
 
 // TODO(b/122472540): only store one data item per object
 template <typename V>
-static void pruneMapLocked(ConcurrentMap<wp<::android::hidl::base::V1_0::IBase>, V>& map) {
-    using ::android::hidl::base::V1_0::IBase;
-
+static void pruneMapLocked(ConcurrentMap<wp<IBase>, V>& map) {
     std::vector<wp<IBase>> toDelete;
     for (const auto& kv : map) {
         if (kv.first.promote() == nullptr) {
@@ -58,8 +56,7 @@ static void pruneMapLocked(ConcurrentMap<wp<::android::hidl::base::V1_0::IBase>,
     }
 }
 
-bool setMinSchedulerPolicy(const sp<::android::hidl::base::V1_0::IBase>& service,
-                           int policy, int priority) {
+bool setMinSchedulerPolicy(const sp<IBase>& service, int policy, int priority) {
     if (service->isRemote()) {
         LOG(ERROR) << "Can't set scheduler policy on remote service.";
         return false;
@@ -95,9 +92,9 @@ bool setMinSchedulerPolicy(const sp<::android::hidl::base::V1_0::IBase>& service
     return true;
 }
 
-bool setRequestingSid(const sp<::android::hidl::base::V1_0::IBase>& service, bool requesting) {
+bool setRequestingSid(const sp<IBase>& service, bool requesting) {
     if (service->isRemote()) {
-        ALOGE("Can't set requesting sid on remote service.");
+        LOG(ERROR) << "Can't set requesting sid on remote service.";
         return false;
     }
 
