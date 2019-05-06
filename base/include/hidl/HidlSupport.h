@@ -20,24 +20,18 @@
 #include <algorithm>
 #include <array>
 #include <iterator>
+#include <cutils/native_handle.h>
 #include <hidl/HidlInternal.h>
+#include <hidl/Status.h>
 #include <map>
 #include <sstream>
 #include <stddef.h>
 #include <tuple>
 #include <type_traits>
-#include <vector>
-
-// no requirements on types not used in scatter/gather
-// no requirements on other libraries
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wpadded"
-#include <cutils/native_handle.h>
-#include <hidl/Status.h>
 #include <utils/Errors.h>
 #include <utils/RefBase.h>
 #include <utils/StrongPointer.h>
-#pragma clang diagnostic pop
+#include <vector>
 
 namespace android {
 
@@ -129,9 +123,8 @@ struct hidl_handle {
 private:
     void freeHandle();
 
-    details::hidl_pointer<const native_handle_t> mHandle;
-    bool mOwnsHandle;
-    uint8_t mPad[7];
+    details::hidl_pointer<const native_handle_t> mHandle __attribute__ ((aligned(8)));
+    bool mOwnsHandle __attribute ((aligned(8)));
 };
 
 struct hidl_string {
@@ -181,7 +174,6 @@ private:
     details::hidl_pointer<const char> mBuffer;
     uint32_t mSize;  // NOT including the terminating '\0'.
     bool mOwnsBuffer; // if true then mBuffer is a mutable char *
-    uint8_t mPad[3];
 
     // copy from data with size. Assume that my memory is freed
     // (through clear(), for example)
@@ -302,9 +294,9 @@ struct hidl_memory {
     static const size_t kOffsetOfName;
 
 private:
-    hidl_handle mHandle;
-    uint64_t mSize;
-    hidl_string mName;
+    hidl_handle mHandle __attribute__ ((aligned(8)));
+    uint64_t mSize __attribute__ ((aligned(8)));
+    hidl_string mName __attribute__ ((aligned(8)));
 };
 
 // HidlMemory is a wrapper class to support sp<> for hidl_memory. It also
@@ -336,12 +328,11 @@ template<typename T>
 struct hidl_vec {
     using value_type = T;
 
-    hidl_vec() : mBuffer(nullptr), mSize(0), mOwnsBuffer(true) {
+    hidl_vec()
+        : mBuffer(nullptr),
+          mSize(0),
+          mOwnsBuffer(true) {
         static_assert(hidl_vec<T>::kOffsetOfBuffer == 0, "wrong offset");
-
-        // mOwnsBuffer true to match original implementation
-
-        memset(mPad, 0, sizeof(mPad));
     }
 
     // Note, does not initialize primitive types.
@@ -351,7 +342,8 @@ struct hidl_vec {
         *this = other;
     }
 
-    hidl_vec(hidl_vec<T> &&other) noexcept : hidl_vec() {
+    hidl_vec(hidl_vec<T> &&other) noexcept
+    : mOwnsBuffer(false) {
         *this = std::move(other);
     }
 
@@ -365,7 +357,7 @@ struct hidl_vec {
               typename = typename std::enable_if<std::is_convertible<
                   typename std::iterator_traits<InputIterator>::iterator_category,
                   std::input_iterator_tag>::value>::type>
-    hidl_vec(InputIterator first, InputIterator last) : hidl_vec() {
+    hidl_vec(InputIterator first, InputIterator last) : mOwnsBuffer(true) {
         auto size = std::distance(first, last);
         if (size > static_cast<int64_t>(UINT32_MAX)) {
             details::logAlwaysFatal("hidl_vec can't hold more than 2^32 elements.");
@@ -374,8 +366,7 @@ struct hidl_vec {
             details::logAlwaysFatal("size can't be negative.");
         }
         mSize = static_cast<uint32_t>(size);
-        mBuffer = new T[mSize]();
-        mOwnsBuffer = true;
+        mBuffer = new T[mSize];
 
         size_t idx = 0;
         for (; first != last; ++first) {
@@ -460,7 +451,7 @@ struct hidl_vec {
             delete[] mBuffer;
         }
         mSize = static_cast<uint32_t>(list.size());
-        mBuffer = new T[mSize]();
+        mBuffer = new T[mSize];
         mOwnsBuffer = true;
 
         size_t idx = 0;
@@ -514,7 +505,7 @@ struct hidl_vec {
         if (size > UINT32_MAX) {
             details::logAlwaysFatal("hidl_vec can't hold more than 2^32 elements.");
         }
-        T* newBuffer = new T[size]();
+        T *newBuffer = new T[size];
 
         for (size_t i = 0; i < std::min(static_cast<uint32_t>(size), mSize); ++i) {
             newBuffer[i] = mBuffer[i];
@@ -583,7 +574,6 @@ private:
     details::hidl_pointer<T> mBuffer;
     uint32_t mSize;
     bool mOwnsBuffer;
-    uint8_t mPad[3];
 
     // copy from an array-like object, assuming my resources are freed.
     template <typename Array>
@@ -591,7 +581,7 @@ private:
         mSize = static_cast<uint32_t>(size);
         mOwnsBuffer = true;
         if (mSize > 0) {
-            mBuffer = new T[size]();
+            mBuffer = new T[size];
             for (size_t i = 0; i < size; ++i) {
                 mBuffer[i] = data[i];
             }
@@ -861,9 +851,7 @@ private:
 // Version functions
 struct hidl_version {
 public:
-    constexpr hidl_version(uint16_t major, uint16_t minor) : mMajor(major), mMinor(minor) {
-        static_assert(sizeof(*this) == 4, "wrong size");
-    }
+    constexpr hidl_version(uint16_t major, uint16_t minor) : mMajor(major), mMinor(minor) {}
 
     bool operator==(const hidl_version& other) const {
         return (mMajor == other.get_major() && mMinor == other.get_minor());
