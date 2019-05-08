@@ -16,7 +16,9 @@ cc_defaults {
     name: "libhidl-defaults",
     cflags: [
         "-Wall",
+        "-Wdocumentation", // since some users use this
         "-Werror",
+        "-Wextra-semi",
     ],
 }
 
@@ -25,9 +27,10 @@ cc_test {
     defaults: ["libhidl-defaults"],
     gtest: false,
     srcs: ["test_main.cpp"],
+    test_suites: ["device-tests"],
 
     shared_libs: [
-        "android.hardware.tests.inheritance@1.0",
+        "android.hidl.memory@1.0",
         "libbase",
         "libhidlbase",
         "libhidltransport",
@@ -37,10 +40,6 @@ cc_test {
         "libcutils",
     ],
     static_libs: ["libgtest", "libgmock"],
-
-    required: [
-        "android.hardware.tests.inheritance@1.0-impl",
-    ],
 
     cflags: [
         "-O0",
