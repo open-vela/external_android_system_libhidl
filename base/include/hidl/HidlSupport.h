@@ -40,22 +40,18 @@ namespace android {
 namespace hidl {
 namespace memory {
 namespace V1_0 {
-
-struct IMemory;
-
-}  // namespace V1_0
-}  // namespace memory
-}  // namespace hidl
+    struct IMemory;
+}; // namespace V1_0
+}; // namespace manager
+}; // namespace hidl
 
 namespace hidl {
 namespace base {
 namespace V1_0 {
-
-struct IBase;
-
-}  // namespace V1_0
-}  // namespace base
-}  // namespace hidl
+    struct IBase;
+}; // namespace V1_0
+}; // namespace base
+}; // namespace hidl
 
 namespace hardware {
 
@@ -116,10 +112,6 @@ struct hidl_handle {
 
     // explicit conversion
     const native_handle_t *getNativeHandle() const;
-
-    // offsetof(hidl_handle, mHandle) exposed since mHandle is private.
-    static const size_t kOffsetOfNativeHandle;
-
 private:
     void freeHandle();
 
@@ -163,8 +155,6 @@ struct hidl_string {
     // Reference an external char array. Ownership is _not_ transferred.
     // Caller is responsible for ensuring that underlying memory is valid
     // for the lifetime of this hidl_string.
-    //
-    // size == strlen(data)
     void setToExternal(const char *data, size_t size);
 
     // offsetof(hidl_string, mBuffer) exposed since mBuffer is private.
@@ -326,8 +316,6 @@ protected:
 
 template<typename T>
 struct hidl_vec {
-    using value_type = T;
-
     hidl_vec() {
         static_assert(hidl_vec<T>::kOffsetOfBuffer == 0, "wrong offset");
 
@@ -350,7 +338,19 @@ struct hidl_vec {
         *this = std::move(other);
     }
 
-    hidl_vec(const std::initializer_list<T> list) : hidl_vec() { *this = list; }
+    hidl_vec(const std::initializer_list<T> list) : hidl_vec() {
+        if (list.size() > UINT32_MAX) {
+            details::logAlwaysFatal("hidl_vec can't hold more than 2^32 elements.");
+        }
+        mSize = static_cast<uint32_t>(list.size());
+        mBuffer = new T[mSize]();
+        mOwnsBuffer = true;
+
+        size_t idx = 0;
+        for (auto it = list.begin(); it != list.end(); ++it) {
+            mBuffer[idx++] = *it;
+        }
+    }
 
     hidl_vec(const std::vector<T> &other) : hidl_vec() {
         *this = other;
@@ -444,24 +444,6 @@ struct hidl_vec {
             delete[] mBuffer;
         }
         copyFrom(other, other.size());
-        return *this;
-    }
-
-    hidl_vec& operator=(const std::initializer_list<T> list) {
-        if (list.size() > UINT32_MAX) {
-            details::logAlwaysFatal("hidl_vec can't hold more than 2^32 elements.");
-        }
-        if (mOwnsBuffer) {
-            delete[] mBuffer;
-        }
-        mSize = static_cast<uint32_t>(list.size());
-        mBuffer = new T[mSize]();
-        mOwnsBuffer = true;
-
-        size_t idx = 0;
-        for (auto it = list.begin(); it != list.end(); ++it) {
-            mBuffer[idx++] = *it;
-        }
         return *this;
     }
 
@@ -795,7 +777,7 @@ private:
 // An array of T's. Assumes that T::operator=(const T &) is defined.
 template<typename T, size_t SIZE1>
 struct hidl_array<T, SIZE1> {
-    using value_type = T;
+
     using std_array_type = typename details::std_array<T, SIZE1>::type;
 
     hidl_array() = default;
@@ -861,10 +843,6 @@ public:
 
     bool operator==(const hidl_version& other) const {
         return (mMajor == other.get_major() && mMinor == other.get_minor());
-    }
-
-    bool operator!=(const hidl_version& other) const {
-        return !(*this == other);
     }
 
     bool operator<(const hidl_version& other) const {
@@ -1011,38 +989,12 @@ std::string toString(const hidl_array<T, SIZE1, SIZE2, SIZES...> &a) {
             + details::toString(details::const_accessor<T, SIZE1, SIZE2, SIZES...>(a.data()));
 }
 
-namespace details {
-// Never instantiated. Used as a placeholder for template variables.
-template <typename T>
-struct hidl_invalid_type;
-
-// HIDL generates specializations of this for enums. See hidl_enum_range.
-template <typename T, typename = std::enable_if_t<std::is_enum<T>::value>>
-constexpr hidl_invalid_type<T> hidl_enum_values;
-}  // namespace details
-
 /**
- * Every HIDL generated enum supports this function.
- * E.x.: for(const auto v : hidl_enum_range<Enum>) { ... }
+ * Every HIDL generated enum generates an implementation of this function.
+ * E.x.: for(const auto v : hidl_enum_iterator<Enum>) { ... }
  */
-template <typename T, typename = std::enable_if_t<std::is_enum<T>::value>>
-struct hidl_enum_range {
-    constexpr auto begin() const { return std::begin(details::hidl_enum_values<T>); }
-    constexpr auto cbegin() const { return begin(); }
-    constexpr auto rbegin() const { return std::rbegin(details::hidl_enum_values<T>); }
-    constexpr auto crbegin() const { return rbegin(); }
-    constexpr auto end() const { return std::end(details::hidl_enum_values<T>); }
-    constexpr auto cend() const { return end(); }
-    constexpr auto rend() const { return std::rend(details::hidl_enum_values<T>); }
-    constexpr auto crend() const { return rend(); }
-};
-
-template <typename T, typename = std::enable_if_t<std::is_enum<T>::value>>
-struct hidl_enum_iterator {
-    static_assert(!std::is_enum<T>::value,
-                  "b/78573628: hidl_enum_iterator was renamed to hidl_enum_range because it is not "
-                  "actually an iterator. Please use that type instead.");
-};
+template <typename>
+struct hidl_enum_iterator;
 
 /**
  * Bitfields in HIDL are the underlying type of the enumeration.
