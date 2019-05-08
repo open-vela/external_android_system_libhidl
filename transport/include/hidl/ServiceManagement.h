@@ -18,6 +18,8 @@
 #define ANDROID_HARDWARE_ISERVICE_MANAGER_H
 
 #include <string>
+
+#include <android/hidl/base/1.0/IBase.h>
 #include <utils/StrongPointer.h>
 
 namespace android {
@@ -27,16 +29,13 @@ namespace manager {
 namespace V1_0 {
     struct IServiceManager;
 }; // namespace V1_0
+namespace V1_1 {
+    struct IServiceManager;
+}; // namespace V1_0
 }; // namespace manager
 }; // namespace hidl
 
 namespace hardware {
-
-// These functions are for internal use by hidl. If you want to get ahold
-// of an interface, the best way to do this is by calling IFoo::getService()
-
-sp<::android::hidl::manager::V1_0::IServiceManager> defaultServiceManager();
-sp<::android::hidl::manager::V1_0::IServiceManager> getPassthroughServiceManager();
 
 namespace details {
 // e.x.: android.hardware.foo@1.0, IFoo, default
@@ -46,7 +45,37 @@ void onRegistration(const std::string &packageName,
 
 // e.x.: android.hardware.foo@1.0::IFoo, default
 void waitForHwService(const std::string &interface, const std::string &instanceName);
+
+void preloadPassthroughService(const std::string &descriptor);
+
+// Returns a service with the following constraints:
+// - retry => service is waited for and returned if available in this process
+// - getStub => internal only. Forces to get the unwrapped (no BsFoo) if available.
+// TODO(b/65843592)
+// If the service is a remote service, this function returns BpBase. If the service is
+// a passthrough service, this function returns the appropriately wrapped Bs child object.
+sp<::android::hidl::base::V1_0::IBase> getRawServiceInternal(const std::string& descriptor,
+                                                             const std::string& instance,
+                                                             bool retry, bool getStub);
 };
+
+// These functions are for internal use by hidl. If you want to get ahold
+// of an interface, the best way to do this is by calling IFoo::getService()
+sp<::android::hidl::manager::V1_0::IServiceManager> defaultServiceManager();
+sp<::android::hidl::manager::V1_1::IServiceManager> defaultServiceManager1_1();
+sp<::android::hidl::manager::V1_0::IServiceManager> getPassthroughServiceManager();
+sp<::android::hidl::manager::V1_1::IServiceManager> getPassthroughServiceManager1_1();
+
+/**
+ * Given a service that is in passthrough mode, this function will go ahead and load the
+ * required passthrough module library (but not call HIDL_FETCH_I* functions to instantiate it).
+ *
+ * E.x.: preloadPassthroughService<IFoo>();
+ */
+template<typename I>
+static inline void preloadPassthroughService() {
+    details::preloadPassthroughService(I::descriptor);
+}
 
 }; // namespace hardware
 }; // namespace android

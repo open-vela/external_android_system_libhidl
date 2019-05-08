@@ -12,21 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-subdirs = [
-    "allocator/1.0",
-    "allocator/1.0/default",
-    "base/1.0",
-    "manager/1.0",
-    "memory/1.0",
-    "memory/1.0/default",
-    "token/1.0",
-    "token/1.0/utils",
-]
+hidl_package_root {
+    name: "android.hidl",
+    path: "system/libhidl/transport",
+}
 
-cc_library_shared {
+cc_library {
     name: "libhidltransport",
     vendor_available: true,
-    cflags: libhidl_flags,
+    vndk: {
+        enabled: true,
+        support_system_process: true,
+    },
+    defaults: [
+        "libhidl-defaults",
+        "hidl-module-defaults",
+    ],
     shared_libs: [
         "libbase",
         "liblog",
@@ -34,9 +35,9 @@ cc_library_shared {
         "libhidlbase",
         "libhwbinder",
         "libcutils",
+        "libvndksupport",
     ],
     export_shared_lib_headers: [
-        "libbase",
         "libutils",
         "libhidlbase",
     ],
@@ -45,20 +46,25 @@ cc_library_shared {
 
     generated_sources: [
         "android.hidl.manager@1.0_genc++",
+        "android.hidl.manager@1.1_genc++",
         "android.hidl.base@1.0_genc++"
     ],
     generated_headers: [
         "android.hidl.manager@1.0_genc++_headers",
+        "android.hidl.manager@1.1_genc++_headers",
         "android.hidl.base@1.0_genc++_headers"
     ],
     export_generated_headers: [
         "android.hidl.manager@1.0_genc++_headers",
+        "android.hidl.manager@1.1_genc++_headers",
         "android.hidl.base@1.0_genc++_headers"
     ],
 
     srcs: [
         "HidlBinderSupport.cpp",
+        "HidlPassthroughSupport.cpp",
         "HidlTransportSupport.cpp",
+        "HidlTransportUtils.cpp",
         "ServiceManagement.cpp",
         "Static.cpp"
     ],
@@ -66,6 +72,9 @@ cc_library_shared {
     product_variables: {
         debuggable: {
             cflags: ["-DLIBHIDL_TARGET_DEBUGGABLE"],
+        },
+        enforce_vintf_manifest: {
+            cflags: ["-DENFORCE_VINTF_MANIFEST"]
         },
     },
 }
