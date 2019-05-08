@@ -28,9 +28,34 @@ namespace android {
 namespace hardware {
 namespace details {
 
+// tag for pure interfaces (e.x. IFoo)
+struct i_tag {};
+
+// tag for server interfaces (e.x. BnHwFoo)
+struct bnhw_tag {};
+
+// tag for proxy interfaces (e.x. BpHwFoo)
+struct bphw_tag {};
+
+// tag for passthrough interfaces (e.x. BsFoo)
+struct bs_tag {};
+
 //Templated classes can use the below method
 //to avoid creating dependencies on liblog.
 void logAlwaysFatal(const char *message);
+
+// Returns vndk version from "ro.vndk.version" with '-' as a prefix.
+// If "ro.vndk.version" is not set or set to "current", it returns empty string.
+std::string getVndkVersionStr();
+
+// Explicitly invokes the parameterized element's destructor;
+// intended to be used alongside the placement new operator.
+template<typename T>
+void destructElement(T* element) {
+    if (element != nullptr) {
+        element->~T();
+    }
+}
 
 // HIDL client/server code should *NOT* use this class.
 //
@@ -47,13 +72,13 @@ struct hidl_pointer {
     }
     hidl_pointer(T* ptr) : hidl_pointer() { mPointer = ptr; }
     hidl_pointer(const hidl_pointer<T>& other) : hidl_pointer() { mPointer = other.mPointer; }
-    hidl_pointer(hidl_pointer<T>&& other) : hidl_pointer() { *this = std::move(other); }
+    hidl_pointer(hidl_pointer<T>&& other) noexcept : hidl_pointer() { *this = std::move(other); }
 
     hidl_pointer &operator=(const hidl_pointer<T>& other) {
         mPointer = other.mPointer;
         return *this;
     }
-    hidl_pointer &operator=(hidl_pointer<T>&& other) {
+    hidl_pointer& operator=(hidl_pointer<T>&& other) noexcept {
         mPointer = other.mPointer;
         other.mPointer = nullptr;
         return *this;
@@ -90,22 +115,22 @@ private:
 };
 
 #define HAL_LIBRARY_PATH_SYSTEM_64BIT "/system/lib64/hw/"
-#define HAL_LIBRARY_PATH_VNDK_SP_64BIT "/system/lib64/vndk-sp/hw/"
+#define HAL_LIBRARY_PATH_VNDK_SP_64BIT_FOR_VERSION "/system/lib64/vndk-sp%s/hw/"
 #define HAL_LIBRARY_PATH_VENDOR_64BIT "/vendor/lib64/hw/"
 #define HAL_LIBRARY_PATH_ODM_64BIT    "/odm/lib64/hw/"
 #define HAL_LIBRARY_PATH_SYSTEM_32BIT "/system/lib/hw/"
-#define HAL_LIBRARY_PATH_VNDK_SP_32BIT "/system/lib/vndk-sp/hw/"
+#define HAL_LIBRARY_PATH_VNDK_SP_32BIT_FOR_VERSION "/system/lib/vndk-sp%s/hw/"
 #define HAL_LIBRARY_PATH_VENDOR_32BIT "/vendor/lib/hw/"
 #define HAL_LIBRARY_PATH_ODM_32BIT    "/odm/lib/hw/"
 
 #if defined(__LP64__)
 #define HAL_LIBRARY_PATH_SYSTEM HAL_LIBRARY_PATH_SYSTEM_64BIT
-#define HAL_LIBRARY_PATH_VNDK_SP HAL_LIBRARY_PATH_VNDK_SP_64BIT
+#define HAL_LIBRARY_PATH_VNDK_SP_FOR_VERSION HAL_LIBRARY_PATH_VNDK_SP_64BIT_FOR_VERSION
 #define HAL_LIBRARY_PATH_VENDOR HAL_LIBRARY_PATH_VENDOR_64BIT
 #define HAL_LIBRARY_PATH_ODM    HAL_LIBRARY_PATH_ODM_64BIT
 #else
 #define HAL_LIBRARY_PATH_SYSTEM HAL_LIBRARY_PATH_SYSTEM_32BIT
-#define HAL_LIBRARY_PATH_VNDK_SP HAL_LIBRARY_PATH_VNDK_SP_32BIT
+#define HAL_LIBRARY_PATH_VNDK_SP_FOR_VERSION HAL_LIBRARY_PATH_VNDK_SP_32BIT_FOR_VERSION
 #define HAL_LIBRARY_PATH_VENDOR HAL_LIBRARY_PATH_VENDOR_32BIT
 #define HAL_LIBRARY_PATH_ODM    HAL_LIBRARY_PATH_ODM_32BIT
 #endif
