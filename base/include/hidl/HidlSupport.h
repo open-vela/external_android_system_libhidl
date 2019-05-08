@@ -40,18 +40,22 @@ namespace android {
 namespace hidl {
 namespace memory {
 namespace V1_0 {
-    struct IMemory;
-}; // namespace V1_0
-}; // namespace manager
-}; // namespace hidl
+
+struct IMemory;
+
+}  // namespace V1_0
+}  // namespace memory
+}  // namespace hidl
 
 namespace hidl {
 namespace base {
 namespace V1_0 {
-    struct IBase;
-}; // namespace V1_0
-}; // namespace base
-}; // namespace hidl
+
+struct IBase;
+
+}  // namespace V1_0
+}  // namespace base
+}  // namespace hidl
 
 namespace hardware {
 
@@ -112,6 +116,10 @@ struct hidl_handle {
 
     // explicit conversion
     const native_handle_t *getNativeHandle() const;
+
+    // offsetof(hidl_handle, mHandle) exposed since mHandle is private.
+    static const size_t kOffsetOfNativeHandle;
+
 private:
     void freeHandle();
 
@@ -155,6 +163,8 @@ struct hidl_string {
     // Reference an external char array. Ownership is _not_ transferred.
     // Caller is responsible for ensuring that underlying memory is valid
     // for the lifetime of this hidl_string.
+    //
+    // size == strlen(data)
     void setToExternal(const char *data, size_t size);
 
     // offsetof(hidl_string, mBuffer) exposed since mBuffer is private.
@@ -172,15 +182,16 @@ private:
     void moveFrom(hidl_string &&);
 };
 
-#define HIDL_STRING_OPERATOR(OP)                                               \
-    inline bool operator OP(const hidl_string &hs1, const hidl_string &hs2) {  \
-        return strcmp(hs1.c_str(), hs2.c_str()) OP 0;                          \
-    }                                                                          \
-    inline bool operator OP(const hidl_string &hs, const char *s) {            \
-        return strcmp(hs.c_str(), s) OP 0;                                     \
-    }                                                                          \
-    inline bool operator OP(const char *s, const hidl_string &hs) {            \
-        return strcmp(hs.c_str(), s) OP 0;                                     \
+// Use NOLINT to suppress missing parentheses warnings around OP.
+#define HIDL_STRING_OPERATOR(OP)                                              \
+    inline bool operator OP(const hidl_string& hs1, const hidl_string& hs2) { \
+        return strcmp(hs1.c_str(), hs2.c_str()) OP 0; /* NOLINT */            \
+    }                                                                         \
+    inline bool operator OP(const hidl_string& hs, const char* s) {           \
+        return strcmp(hs.c_str(), s) OP 0; /* NOLINT */                       \
+    }                                                                         \
+    inline bool operator OP(const char* s, const hidl_string& hs) {           \
+        return strcmp(s, hs.c_str()) OP 0; /* NOLINT */                       \
     }
 
 HIDL_STRING_OPERATOR(==)
@@ -205,6 +216,13 @@ struct hidl_memory {
 
     hidl_memory() : mHandle(nullptr), mSize(0), mName("") {
     }
+
+    /**
+     * Creates a hidl_memory object whose handle has the same lifetime
+     * as the handle moved into it.
+     */
+    hidl_memory(const hidl_string& name, hidl_handle&& handle, size_t size)
+        : mHandle(std::move(handle)), mSize(size), mName(name) {}
 
     /**
      * Creates a hidl_memory object, but doesn't take ownership of
@@ -267,6 +285,9 @@ struct hidl_memory {
         return mSize;
     }
 
+    // @return true if it's valid
+    inline bool valid() const { return handle() != nullptr; }
+
     // offsetof(hidl_memory, mHandle) exposed since mHandle is private.
     static const size_t kOffsetOfHandle;
     // offsetof(hidl_memory, mName) exposed since mHandle is private.
@@ -278,6 +299,29 @@ private:
     hidl_string mName __attribute__ ((aligned(8)));
 };
 
+// HidlMemory is a wrapper class to support sp<> for hidl_memory. It also
+// provides factory methods to create an instance from hidl_memory or
+// from a opened file descriptor. The number of factory methods can be increase
+// to support other type of hidl_memory without break the ABI.
+class HidlMemory : public virtual hidl_memory, public virtual ::android::RefBase {
+public:
+    static sp<HidlMemory> getInstance(const hidl_memory& mem);
+
+    static sp<HidlMemory> getInstance(hidl_memory&& mem);
+
+    static sp<HidlMemory> getInstance(const hidl_string& name, hidl_handle&& handle, uint64_t size);
+    // @param fd, shall be opened and points to the resource.
+    // @note this method takes the ownership of the fd and will close it in
+    //     destructor
+    // @return nullptr in failure with the fd closed
+    static sp<HidlMemory> getInstance(const hidl_string& name, int fd, uint64_t size);
+
+    virtual ~HidlMemory();
+
+protected:
+    HidlMemory();
+    HidlMemory(const hidl_string& name, hidl_handle&& handle, size_t size);
+};
 ////////////////////////////////////////////////////////////////////////////////
 
 template<typename T>
@@ -293,6 +337,9 @@ struct hidl_vec {
         mOwnsBuffer = true;
     }
 
+    // Note, does not initialize primitive types.
+    hidl_vec(size_t size) : hidl_vec() { resize(size); }
+
     hidl_vec(const hidl_vec<T> &other) : hidl_vec() {
         *this = other;
     }
@@ -301,29 +348,39 @@ struct hidl_vec {
         *this = std::move(other);
     }
 
-    hidl_vec(const std::initializer_list<T> list) : hidl_vec() {
-        if (list.size() > UINT32_MAX) {
+    hidl_vec(const std::initializer_list<T> list) : hidl_vec() { *this = list; }
+
+    hidl_vec(const std::vector<T> &other) : hidl_vec() {
+        *this = other;
+    }
+
+    template <typename InputIterator,
+              typename = typename std::enable_if<std::is_convertible<
+                  typename std::iterator_traits<InputIterator>::iterator_category,
+                  std::input_iterator_tag>::value>::type>
+    hidl_vec(InputIterator first, InputIterator last) : hidl_vec() {
+        auto size = std::distance(first, last);
+        if (size > static_cast<int64_t>(UINT32_MAX)) {
             details::logAlwaysFatal("hidl_vec can't hold more than 2^32 elements.");
         }
-        mSize = static_cast<uint32_t>(list.size());
+        if (size < 0) {
+            details::logAlwaysFatal("size can't be negative.");
+        }
+        mSize = static_cast<uint32_t>(size);
         mBuffer = new T[mSize]();
         mOwnsBuffer = true;
 
         size_t idx = 0;
-        for (auto it = list.begin(); it != list.end(); ++it) {
-            mBuffer[idx++] = *it;
+        for (; first != last; ++first) {
+            mBuffer[idx++] = static_cast<T>(*first);
         }
-    }
-
-    hidl_vec(const std::vector<T> &other) : hidl_vec() {
-        *this = other;
     }
 
     ~hidl_vec() {
         if (mOwnsBuffer) {
             delete[] mBuffer;
         }
-        mBuffer = NULL;
+        mBuffer = nullptr;
     }
 
     // Reference an existing array, optionally taking ownership. It is the
@@ -388,6 +445,24 @@ struct hidl_vec {
         return *this;
     }
 
+    hidl_vec& operator=(const std::initializer_list<T> list) {
+        if (list.size() > UINT32_MAX) {
+            details::logAlwaysFatal("hidl_vec can't hold more than 2^32 elements.");
+        }
+        if (mOwnsBuffer) {
+            delete[] mBuffer;
+        }
+        mSize = static_cast<uint32_t>(list.size());
+        mBuffer = new T[mSize]();
+        mOwnsBuffer = true;
+
+        size_t idx = 0;
+        for (auto it = list.begin(); it != list.end(); ++it) {
+            mBuffer[idx++] = *it;
+        }
+        return *this;
+    }
+
     // cast to an std::vector.
     operator std::vector<T>() const {
         std::vector<T> v(mSize);
@@ -427,6 +502,7 @@ struct hidl_vec {
         return mBuffer[index];
     }
 
+    // Does not initialize primitive types if new size > old size.
     void resize(size_t size) {
         if (size > UINT32_MAX) {
             details::logAlwaysFatal("hidl_vec can't hold more than 2^32 elements.");
@@ -512,7 +588,7 @@ private:
                 mBuffer[i] = data[i];
             }
         } else {
-            mBuffer = NULL;
+            mBuffer = nullptr;
         }
     }
 };
@@ -785,6 +861,10 @@ public:
         return (mMajor == other.get_major() && mMinor == other.get_minor());
     }
 
+    bool operator!=(const hidl_version& other) const {
+        return !(*this == other);
+    }
+
     bool operator<(const hidl_version& other) const {
         return (mMajor < other.get_major() ||
                 (mMajor == other.get_major() && mMinor < other.get_minor()));
@@ -928,6 +1008,45 @@ std::string toString(const hidl_array<T, SIZE1, SIZE2, SIZES...> &a) {
     return details::arraySizeToString<SIZE1, SIZE2, SIZES...>()
             + details::toString(details::const_accessor<T, SIZE1, SIZE2, SIZES...>(a.data()));
 }
+
+namespace details {
+// Never instantiated. Used as a placeholder for template variables.
+template <typename T>
+struct hidl_invalid_type;
+
+// HIDL generates specializations of this for enums. See hidl_enum_range.
+template <typename T, typename = std::enable_if_t<std::is_enum<T>::value>>
+constexpr hidl_invalid_type<T> hidl_enum_values;
+}  // namespace details
+
+/**
+ * Every HIDL generated enum supports this function.
+ * E.x.: for(const auto v : hidl_enum_range<Enum>) { ... }
+ */
+template <typename T, typename = std::enable_if_t<std::is_enum<T>::value>>
+struct hidl_enum_range {
+    constexpr auto begin() const { return std::begin(details::hidl_enum_values<T>); }
+    constexpr auto cbegin() const { return begin(); }
+    constexpr auto rbegin() const { return std::rbegin(details::hidl_enum_values<T>); }
+    constexpr auto crbegin() const { return rbegin(); }
+    constexpr auto end() const { return std::end(details::hidl_enum_values<T>); }
+    constexpr auto cend() const { return end(); }
+    constexpr auto rend() const { return std::rend(details::hidl_enum_values<T>); }
+    constexpr auto crend() const { return rend(); }
+};
+
+template <typename T, typename = std::enable_if_t<std::is_enum<T>::value>>
+struct hidl_enum_iterator {
+    static_assert(!std::is_enum<T>::value,
+                  "b/78573628: hidl_enum_iterator was renamed to hidl_enum_range because it is not "
+                  "actually an iterator. Please use that type instead.");
+};
+
+/**
+ * Bitfields in HIDL are the underlying type of the enumeration.
+ */
+template <typename Enum>
+using hidl_bitfield = typename std::underlying_type<Enum>::type;
 
 }  // namespace hardware
 }  // namespace android
