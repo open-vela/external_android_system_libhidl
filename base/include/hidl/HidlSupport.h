@@ -172,16 +172,15 @@ private:
     void moveFrom(hidl_string &&);
 };
 
-// Use NOLINT to suppress missing parentheses warnings around OP.
-#define HIDL_STRING_OPERATOR(OP)                                              \
-    inline bool operator OP(const hidl_string& hs1, const hidl_string& hs2) { \
-        return strcmp(hs1.c_str(), hs2.c_str()) OP 0; /* NOLINT */            \
-    }                                                                         \
-    inline bool operator OP(const hidl_string& hs, const char* s) {           \
-        return strcmp(hs.c_str(), s) OP 0; /* NOLINT */                       \
-    }                                                                         \
-    inline bool operator OP(const char* s, const hidl_string& hs) {           \
-        return strcmp(s, hs.c_str()) OP 0; /* NOLINT */                       \
+#define HIDL_STRING_OPERATOR(OP)                                               \
+    inline bool operator OP(const hidl_string &hs1, const hidl_string &hs2) {  \
+        return strcmp(hs1.c_str(), hs2.c_str()) OP 0;                          \
+    }                                                                          \
+    inline bool operator OP(const hidl_string &hs, const char *s) {            \
+        return strcmp(hs.c_str(), s) OP 0;                                     \
+    }                                                                          \
+    inline bool operator OP(const char *s, const hidl_string &hs) {            \
+        return strcmp(hs.c_str(), s) OP 0;                                     \
     }
 
 HIDL_STRING_OPERATOR(==)
@@ -206,13 +205,6 @@ struct hidl_memory {
 
     hidl_memory() : mHandle(nullptr), mSize(0), mName("") {
     }
-
-    /**
-     * Creates a hidl_memory object whose handle has the same lifetime
-     * as the handle moved into it.
-     */
-    hidl_memory(const hidl_string& name, hidl_handle&& handle, size_t size)
-        : mHandle(std::move(handle)), mSize(size), mName(name) {}
 
     /**
      * Creates a hidl_memory object, but doesn't take ownership of
@@ -275,9 +267,6 @@ struct hidl_memory {
         return mSize;
     }
 
-    // @return true if it's valid
-    inline bool valid() const { return handle() != nullptr; }
-
     // offsetof(hidl_memory, mHandle) exposed since mHandle is private.
     static const size_t kOffsetOfHandle;
     // offsetof(hidl_memory, mName) exposed since mHandle is private.
@@ -289,29 +278,6 @@ private:
     hidl_string mName __attribute__ ((aligned(8)));
 };
 
-// HidlMemory is a wrapper class to support sp<> for hidl_memory. It also
-// provides factory methods to create an instance from hidl_memory or
-// from a opened file descriptor. The number of factory methods can be increase
-// to support other type of hidl_memory without break the ABI.
-class HidlMemory : public virtual hidl_memory, public virtual ::android::RefBase {
-public:
-    static sp<HidlMemory> getInstance(const hidl_memory& mem);
-
-    static sp<HidlMemory> getInstance(hidl_memory&& mem);
-
-    static sp<HidlMemory> getInstance(const hidl_string& name, hidl_handle&& handle, uint64_t size);
-    // @param fd, shall be opened and points to the resource.
-    // @note this method takes the ownership of the fd and will close it in
-    //     destructor
-    // @return nullptr in failure with the fd closed
-    static sp<HidlMemory> getInstance(const hidl_string& name, int fd, uint64_t size);
-
-    virtual ~HidlMemory();
-
-protected:
-    HidlMemory();
-    HidlMemory(const hidl_string& name, hidl_handle&& handle, size_t size);
-};
 ////////////////////////////////////////////////////////////////////////////////
 
 template<typename T>
@@ -327,9 +293,6 @@ struct hidl_vec {
         mOwnsBuffer = true;
     }
 
-    // Note, does not initialize primitive types.
-    hidl_vec(size_t size) : hidl_vec() { resize(size); }
-
     hidl_vec(const hidl_vec<T> &other) : hidl_vec() {
         *this = other;
     }
@@ -343,7 +306,7 @@ struct hidl_vec {
             details::logAlwaysFatal("hidl_vec can't hold more than 2^32 elements.");
         }
         mSize = static_cast<uint32_t>(list.size());
-        mBuffer = new T[mSize]();
+        mBuffer = new T[mSize];
         mOwnsBuffer = true;
 
         size_t idx = 0;
@@ -356,33 +319,11 @@ struct hidl_vec {
         *this = other;
     }
 
-    template <typename InputIterator,
-              typename = typename std::enable_if<std::is_convertible<
-                  typename std::iterator_traits<InputIterator>::iterator_category,
-                  std::input_iterator_tag>::value>::type>
-    hidl_vec(InputIterator first, InputIterator last) : hidl_vec() {
-        auto size = std::distance(first, last);
-        if (size > static_cast<int64_t>(UINT32_MAX)) {
-            details::logAlwaysFatal("hidl_vec can't hold more than 2^32 elements.");
-        }
-        if (size < 0) {
-            details::logAlwaysFatal("size can't be negative.");
-        }
-        mSize = static_cast<uint32_t>(size);
-        mBuffer = new T[mSize]();
-        mOwnsBuffer = true;
-
-        size_t idx = 0;
-        for (; first != last; ++first) {
-            mBuffer[idx++] = static_cast<T>(*first);
-        }
-    }
-
     ~hidl_vec() {
         if (mOwnsBuffer) {
             delete[] mBuffer;
         }
-        mBuffer = nullptr;
+        mBuffer = NULL;
     }
 
     // Reference an existing array, optionally taking ownership. It is the
@@ -486,12 +427,11 @@ struct hidl_vec {
         return mBuffer[index];
     }
 
-    // Does not initialize primitive types if new size > old size.
     void resize(size_t size) {
         if (size > UINT32_MAX) {
             details::logAlwaysFatal("hidl_vec can't hold more than 2^32 elements.");
         }
-        T* newBuffer = new T[size]();
+        T *newBuffer = new T[size];
 
         for (size_t i = 0; i < std::min(static_cast<uint32_t>(size), mSize); ++i) {
             newBuffer[i] = mBuffer[i];
@@ -567,12 +507,12 @@ private:
         mSize = static_cast<uint32_t>(size);
         mOwnsBuffer = true;
         if (mSize > 0) {
-            mBuffer = new T[size]();
+            mBuffer = new T[size];
             for (size_t i = 0; i < size; ++i) {
                 mBuffer[i] = data[i];
             }
         } else {
-            mBuffer = nullptr;
+            mBuffer = NULL;
         }
     }
 };
@@ -988,19 +928,6 @@ std::string toString(const hidl_array<T, SIZE1, SIZE2, SIZES...> &a) {
     return details::arraySizeToString<SIZE1, SIZE2, SIZES...>()
             + details::toString(details::const_accessor<T, SIZE1, SIZE2, SIZES...>(a.data()));
 }
-
-/**
- * Every HIDL generated enum generates an implementation of this function.
- * E.x.: for(const auto v : hidl_enum_iterator<Enum>) { ... }
- */
-template <typename>
-struct hidl_enum_iterator;
-
-/**
- * Bitfields in HIDL are the underlying type of the enumeration.
- */
-template <typename Enum>
-using hidl_bitfield = typename std::underlying_type<Enum>::type;
 
 }  // namespace hardware
 }  // namespace android

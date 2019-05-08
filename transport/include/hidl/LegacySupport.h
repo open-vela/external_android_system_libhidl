@@ -74,7 +74,7 @@ status_t defaultPassthroughServiceImplementation(std::string name,
     }
 
     joinRpcThreadpool();
-    return UNKNOWN_ERROR;
+    return 0;
 }
 template<class Interface>
 __attribute__((warn_unused_result))
