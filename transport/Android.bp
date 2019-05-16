@@ -14,11 +14,11 @@
 
 hidl_package_root {
     name: "android.hidl",
-    path: "system/libhidl/transport",
 }
 
 cc_library {
     name: "libhidltransport",
+    recovery_available: true,
     vendor_available: true,
     vndk: {
         enabled: true,
@@ -47,21 +47,25 @@ cc_library {
     generated_sources: [
         "android.hidl.manager@1.0_genc++",
         "android.hidl.manager@1.1_genc++",
+        "android.hidl.manager@1.2_genc++",
         "android.hidl.base@1.0_genc++"
     ],
     generated_headers: [
         "android.hidl.manager@1.0_genc++_headers",
         "android.hidl.manager@1.1_genc++_headers",
+        "android.hidl.manager@1.2_genc++_headers",
         "android.hidl.base@1.0_genc++_headers"
     ],
     export_generated_headers: [
         "android.hidl.manager@1.0_genc++_headers",
         "android.hidl.manager@1.1_genc++_headers",
+        "android.hidl.manager@1.2_genc++_headers",
         "android.hidl.base@1.0_genc++_headers"
     ],
 
     srcs: [
         "HidlBinderSupport.cpp",
+        "HidlLazyUtils.cpp",
         "HidlPassthroughSupport.cpp",
         "HidlTransportSupport.cpp",
         "HidlTransportUtils.cpp",
@@ -75,6 +79,12 @@ cc_library {
         },
         enforce_vintf_manifest: {
             cflags: ["-DENFORCE_VINTF_MANIFEST"]
+        },
+    },
+
+    target: {
+        recovery: {
+            exclude_shared_libs: ["libvndksupport"],
         },
     },
 }
