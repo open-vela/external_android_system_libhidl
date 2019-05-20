@@ -18,7 +18,6 @@ cc_library {
     vndk: {
         enabled: true,
     },
-    double_loadable: true,
     defaults: ["libhidl-defaults"],
     shared_libs: [
         "libbinder",

@@ -97,7 +97,7 @@ bool HidlCache<Key, Value, Compare>::lock(const Key& key) {
 template <class Key, class Value, class Compare>
 sp<Value> HidlCache<Key, Value, Compare>::unlock(const Key& key) {
     Lock lock(mMutex);
-    if (locked(key)) {
+    if (locked(key) > 0) {
         sp<Value> v = mLocked[key];
         mLocked.erase(key);
         return v;
