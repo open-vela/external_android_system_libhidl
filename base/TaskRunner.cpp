@@ -15,10 +15,6 @@
  */
 
 #include <hidl/TaskRunner.h>
-
-#include <utils/AndroidThreads.h>
-#include "SynchronizedQueue.h"
-
 #include <thread>
 
 namespace android {
@@ -30,39 +26,21 @@ TaskRunner::TaskRunner() {
 
 void TaskRunner::start(size_t limit) {
     mQueue = std::make_shared<SynchronizedQueue<Task>>(limit);
+
+    // Allow the thread to continue running in background;
+    // TaskRunner do not care about the std::thread object.
+    std::thread{[q = mQueue] {
+        Task nextTask;
+        while (!!(nextTask = q->wait_pop())) {
+            nextTask();
+        }
+    }}.detach();
 }
 
 TaskRunner::~TaskRunner() {
     if (mQueue) {
         mQueue->push(nullptr);
     }
-}
-
-bool TaskRunner::push(const Task &t) {
-    if (mQueue == nullptr || !t) {
-        return false;
-    }
-
-    {
-        std::unique_lock<std::mutex> lock = mQueue->lock();
-
-        if (!mQueue->isInitializedLocked()) {
-            // Allow the thread to continue running in background;
-            // TaskRunner do not care about the std::thread object.
-            std::thread{[q = mQueue] {
-                androidSetThreadName("HIDL TaskRunner");
-
-                Task nextTask;
-                while (!!(nextTask = q->wait_pop())) {
-                    nextTask();
-                }
-            }}.detach();
-
-            mQueue->setInitializedLocked(true);
-        }
-    }
-
-    return this->mQueue->push(t);
 }
 
 } // namespace details
