@@ -18,10 +18,6 @@
 
 #include <hidl/HidlBinderSupport.h>
 
-#include <InternalStatic.h>  // TODO(b/69122224): remove this include, for getOrCreateCachedBinder
-#include <android/hidl/base/1.0/BpHwBase.h>
-#include <hwbinder/IPCThreadState.h>
-
 // C includes
 #include <inttypes.h>
 #include <unistd.h>
@@ -50,30 +46,6 @@ wp<hidl_death_recipient> hidl_binder_death_recipient::getRecipient() {
     return mRecipient;
 }
 
-const size_t hidl_handle::kOffsetOfNativeHandle = offsetof(hidl_handle, mHandle);
-static_assert(hidl_handle::kOffsetOfNativeHandle == 0, "wrong offset");
-
-status_t readEmbeddedFromParcel(const hidl_handle& /* handle */,
-        const Parcel &parcel, size_t parentHandle, size_t parentOffset) {
-    const native_handle_t *handle;
-    status_t _hidl_err = parcel.readNullableEmbeddedNativeHandle(
-            parentHandle,
-            parentOffset + hidl_handle::kOffsetOfNativeHandle,
-            &handle);
-
-    return _hidl_err;
-}
-
-status_t writeEmbeddedToParcel(const hidl_handle &handle,
-        Parcel *parcel, size_t parentHandle, size_t parentOffset) {
-    status_t _hidl_err = parcel->writeEmbeddedNativeHandle(
-            handle.getNativeHandle(),
-            parentHandle,
-            parentOffset + hidl_handle::kOffsetOfNativeHandle);
-
-    return _hidl_err;
-}
-
 const size_t hidl_memory::kOffsetOfHandle = offsetof(hidl_memory, mHandle);
 const size_t hidl_memory::kOffsetOfName = offsetof(hidl_memory, mName);
 static_assert(hidl_memory::kOffsetOfHandle == 0, "wrong offset");
@@ -81,7 +53,6 @@ static_assert(hidl_memory::kOffsetOfName == 24, "wrong offset");
 
 status_t readEmbeddedFromParcel(const hidl_memory& memory,
         const Parcel &parcel, size_t parentHandle, size_t parentOffset) {
-    // TODO(b/111883309): Invoke readEmbeddedFromParcel(hidl_handle, ...).
     const native_handle_t *handle;
     ::android::status_t _hidl_err = parcel.readNullableEmbeddedNativeHandle(
             parentHandle,
@@ -110,7 +81,6 @@ status_t readEmbeddedFromParcel(const hidl_memory& memory,
 
 status_t writeEmbeddedToParcel(const hidl_memory &memory,
         Parcel *parcel, size_t parentHandle, size_t parentOffset) {
-    // TODO(b/111883309): Invoke writeEmbeddedToParcel(hidl_handle, ...).
     status_t _hidl_err = parcel->writeEmbeddedNativeHandle(
             memory.handle(),
             parentHandle,
@@ -163,6 +133,20 @@ status_t writeEmbeddedToParcel(const hidl_string &string,
             parentOffset + hidl_string::kOffsetOfBuffer);
 }
 
+android::status_t writeToParcel(const hidl_version &version, android::hardware::Parcel& parcel) {
+    return parcel.writeUint32(static_cast<uint32_t>(version.get_major()) << 16 | version.get_minor());
+}
+
+hidl_version* readFromParcel(const android::hardware::Parcel& parcel) {
+    uint32_t version;
+    android::status_t status = parcel.readUint32(&version);
+    if (status != OK) {
+        return nullptr;
+    } else {
+        return new hidl_version(version >> 16, version & 0xFFFF);
+    }
+}
+
 status_t readFromParcel(Status *s, const Parcel& parcel) {
     int32_t exception;
     status_t status = parcel.readInt32(&exception);
@@ -206,63 +190,11 @@ status_t writeToParcel(const Status &s, Parcel* parcel) {
     return status;
 }
 
-sp<IBinder> getOrCreateCachedBinder(::android::hidl::base::V1_0::IBase* ifacePtr) {
-    if (ifacePtr == nullptr) {
-        return nullptr;
-    }
-
-    if (ifacePtr->isRemote()) {
-        using ::android::hidl::base::V1_0::BpHwBase;
-
-        BpHwBase* bpBase = static_cast<BpHwBase*>(ifacePtr);
-        BpHwRefBase* bpRefBase = static_cast<BpHwRefBase*>(bpBase);
-        return sp<IBinder>(bpRefBase->remote());
-    }
-
-    std::string descriptor = details::getDescriptor(ifacePtr);
-    if (descriptor.empty()) {
-        // interfaceDescriptor fails
-        return nullptr;
-    }
-
-    // for get + set
-    std::unique_lock<std::mutex> _lock = details::gBnMap->lock();
-
-    wp<BHwBinder> wBnObj = details::gBnMap->getLocked(ifacePtr, nullptr);
-    sp<IBinder> sBnObj = wBnObj.promote();
-
-    if (sBnObj == nullptr) {
-        auto func = details::getBnConstructorMap().get(descriptor, nullptr);
-        if (!func) {
-            // TODO(b/69122224): remove this static variable when prebuilts updated
-            func = details::gBnConstructorMap->get(descriptor, nullptr);
-        }
-        LOG_ALWAYS_FATAL_IF(func == nullptr, "%s gBnConstructorMap returned null for %s", __func__,
-                            descriptor.c_str());
-
-        sBnObj = sp<IBinder>(func(static_cast<void*>(ifacePtr)));
-        LOG_ALWAYS_FATAL_IF(sBnObj == nullptr, "%s Bn constructor function returned null for %s",
-                            __func__, descriptor.c_str());
-
-        details::gBnMap->setLocked(ifacePtr, static_cast<BHwBinder*>(sBnObj.get()));
-    }
-
-    return sBnObj;
-}
-
-static bool gThreadPoolConfigured = false;
-
 void configureBinderRpcThreadpool(size_t maxThreads, bool callerWillJoin) {
-    status_t ret = ProcessState::self()->setThreadPoolConfiguration(
-        maxThreads, callerWillJoin /*callerJoinsPool*/);
-    LOG_ALWAYS_FATAL_IF(ret != OK, "Could not setThreadPoolConfiguration: %d", ret);
-
-    gThreadPoolConfigured = true;
+    ProcessState::self()->setThreadPoolConfiguration(maxThreads, callerWillJoin /*callerJoinsPool*/);
 }
 
 void joinBinderRpcThreadpool() {
-    LOG_ALWAYS_FATAL_IF(!gThreadPoolConfigured,
-                        "HIDL joinRpcThreadpool without calling configureRpcThreadPool.");
     IPCThreadState::self()->joinThreadPool();
 }
 
@@ -270,17 +202,15 @@ int setupBinderPolling() {
     int fd;
     int err = IPCThreadState::self()->setupPolling(&fd);
 
-    LOG_ALWAYS_FATAL_IF(err != OK, "Failed to setup binder polling: %d (%s)", err, strerror(err));
+    if (err != OK) {
+        ALOGE("Failed to setup binder polling: %d (%s)", err, strerror(err));
+    }
 
     return err == OK ? fd : -1;
 }
 
 status_t handleBinderPoll() {
     return IPCThreadState::self()->handlePolledCommands();
-}
-
-void addPostCommandTask(const std::function<void(void)> task) {
-    IPCThreadState::self()->addPostCommandTask(task);
 }
 
 }  // namespace hardware
