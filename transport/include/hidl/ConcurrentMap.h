@@ -50,20 +50,6 @@ public:
         return mMap.erase(k);
     }
 
-    size_type eraseIfEqual(const K& k, const V& v) {
-        std::unique_lock<std::mutex> _lock(mMutex);
-        const_iterator iter = mMap.find(k);
-        if (iter == mMap.end()) {
-            return 0;
-        }
-        if (iter->second == v) {
-            mMap.erase(iter);
-            return 1;
-        } else {
-            return 0;
-        }
-    }
-
     std::unique_lock<std::mutex> lock() { return std::unique_lock<std::mutex>(mMutex); }
 
     void setLocked(K&& k, V&& v) { mMap[std::forward<K>(k)] = std::forward<V>(v); }
@@ -89,23 +75,6 @@ public:
     mutable std::mutex mMutex;
     std::map<K, V> mMap;
 };
-
-namespace details {
-
-// TODO(b/69122224): remove this type and usages of it
-// DO NOT ADD USAGES
-template <typename T>
-class DoNotDestruct {
-  public:
-    DoNotDestruct() { new (buffer) T(); }
-    T& get() { return *reinterpret_cast<T*>(buffer); }
-    T* operator->() { return reinterpret_cast<T*>(buffer); }
-
-  private:
-    alignas(T) char buffer[sizeof(T)];
-};
-
-}  // namespace details
 
 }  // namespace hardware
 }  // namespace android
