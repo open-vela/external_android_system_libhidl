@@ -28,7 +28,7 @@
 #include <hwbinder/Parcel.h>
 #include <log/log.h>  // TODO(b/65843592): remove. Too many users depending on this transitively.
 
-// Defines functions for hidl_string, hidl_version, Status, hidl_vec, MQDescriptor,
+// Defines functions for hidl_string, Status, hidl_vec, MQDescriptor,
 // etc. to interact with Parcel.
 
 namespace android {
@@ -71,13 +71,6 @@ status_t readEmbeddedFromParcel(const hidl_string &string,
 
 status_t writeEmbeddedToParcel(const hidl_string &string,
         Parcel *parcel, size_t parentHandle, size_t parentOffset);
-
-// ---------------------- hidl_version
-
-status_t writeToParcel(const hidl_version &version, android::hardware::Parcel& parcel);
-
-// Caller is responsible for freeing the returned object.
-hidl_version* readFromParcel(const android::hardware::Parcel& parcel);
 
 // ---------------------- Status
 
@@ -211,17 +204,10 @@ sp<IType> fromBinder(const sp<IBinder>& binderIface) {
     if (binderIface.get() == nullptr) {
         return nullptr;
     }
-
     if (binderIface->localBinder() == nullptr) {
         return new ProxyType(binderIface);
     }
-
-    // Ensure that IBinder is BnHwBase (not JHwBinder, for instance)
-    if (!binderIface->checkSubclass(IBase::descriptor)) {
-        return new ProxyType(binderIface);
-    }
     sp<IBase> base = static_cast<BnHwBase*>(binderIface.get())->getImpl();
-
     if (details::canCastInterface(base.get(), IType::descriptor)) {
         StubType* stub = static_cast<StubType*>(binderIface.get());
         return stub->getImpl();
