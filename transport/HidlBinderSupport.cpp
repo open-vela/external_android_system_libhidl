@@ -163,12 +163,42 @@ status_t writeEmbeddedToParcel(const hidl_string &string,
             parentOffset + hidl_string::kOffsetOfBuffer);
 }
 
+android::status_t writeToParcel(const hidl_version &version, android::hardware::Parcel& parcel) {
+    return parcel.writeUint32(static_cast<uint32_t>(version.get_major()) << 16 | version.get_minor());
+}
+
+hidl_version* readFromParcel(const android::hardware::Parcel& parcel) {
+    uint32_t version;
+    android::status_t status = parcel.readUint32(&version);
+    if (status != OK) {
+        return nullptr;
+    } else {
+        return new hidl_version(version >> 16, version & 0xFFFF);
+    }
+}
+
 status_t readFromParcel(Status *s, const Parcel& parcel) {
     int32_t exception;
     status_t status = parcel.readInt32(&exception);
     if (status != OK) {
         s->setFromStatusT(status);
         return status;
+    }
+
+    // Skip over fat response headers.  Not used (or propagated) in native code.
+    if (exception == Status::EX_HAS_REPLY_HEADER) {
+        // Note that the header size includes the 4 byte size field.
+        const int32_t header_start = parcel.dataPosition();
+        int32_t header_size;
+        status = parcel.readInt32(&header_size);
+        if (status != OK) {
+            s->setFromStatusT(status);
+            return status;
+        }
+        parcel.setDataPosition(header_start + header_size);
+        // And fat response headers are currently only used when there are no
+        // exceptions, so act like there was no error.
+        exception = Status::EX_NONE;
     }
 
     if (exception == Status::EX_NONE) {
