@@ -149,20 +149,9 @@ void setProcessHidlReturnRestriction(HidlReturnRestriction restriction) {
 }
 
 namespace details {
-    void return_status::onValueRetrieval() const {
-        if (!isOk()) {
-            LOG(FATAL) << "Attempted to retrieve value from failed HIDL call: " << description();
-        }
-    }
-
     void return_status::assertOk() const {
         if (!isOk()) {
-            LOG(FATAL) << "Failed HIDL return status not checked. Usually this happens because of "
-                          "a transport error (error parceling, binder driver, or from unparceling)"
-                          ". If you see this in code calling into \"Bn\" classes in for a HAL "
-                          "server process, then it is likely that the code there is returning "
-                          "transport errors there (as opposed to errors defined within its "
-                          "protocol). Error is: " << description();
+            LOG(FATAL) << "Attempted to retrieve value from failed HIDL call: " << description();
         }
     }
 
@@ -170,7 +159,9 @@ namespace details {
         // mCheckedStatus must be checked before isOk since isOk modifies mCheckedStatus
         if (mCheckedStatus) return;
 
-        assertOk();
+        if (!isOk()) {
+            LOG(FATAL) << "Failed HIDL return status not checked: " << description();
+        }
 
         if (gReturnRestriction == HidlReturnRestriction::NONE) {
             return;
@@ -185,10 +176,9 @@ namespace details {
     }
 
     return_status& return_status::operator=(return_status&& other) noexcept {
-        if (!mCheckedStatus) {
-            assertOk();
+        if (!mCheckedStatus && !isOk()) {
+            LOG(FATAL) << "Failed HIDL return status not checked: " << description();
         }
-
         std::swap(mStatus, other.mStatus);
         std::swap(mCheckedStatus, other.mCheckedStatus);
         return *this;
