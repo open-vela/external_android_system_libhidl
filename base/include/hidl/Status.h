@@ -20,7 +20,6 @@
 #include <cstdint>
 #include <sstream>
 
-#include <android-base/macros.h>
 #include <hidl/HidlInternal.h>
 #include <utils/Errors.h>
 #include <utils/StrongPointer.h>
@@ -195,6 +194,9 @@ public:
         return mVal;
     }
 
+    T withDefault(T t) {
+        return isOk() ? mVal : t;
+    }
 };
 
 template<typename T> class Return<sp<T>> : public details::return_status {
@@ -219,6 +221,10 @@ public:
     operator sp<T>() const {
         assertOk();
         return mVal;
+    }
+
+    sp<T> withDefault(sp<T> t) {
+        return isOk() ? mVal : t;
     }
 };
 
