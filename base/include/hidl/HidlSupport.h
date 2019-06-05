@@ -326,8 +326,6 @@ protected:
 
 template<typename T>
 struct hidl_vec {
-    using value_type = T;
-
     hidl_vec() {
         static_assert(hidl_vec<T>::kOffsetOfBuffer == 0, "wrong offset");
 
@@ -795,7 +793,7 @@ private:
 // An array of T's. Assumes that T::operator=(const T &) is defined.
 template<typename T, size_t SIZE1>
 struct hidl_array<T, SIZE1> {
-    using value_type = T;
+
     using std_array_type = typename details::std_array<T, SIZE1>::type;
 
     hidl_array() = default;
