@@ -91,6 +91,15 @@ status_t defaultPassthroughServiceImplementation(size_t maxThreads = 1) {
     return defaultPassthroughServiceImplementation<Interface>("default", maxThreads);
 }
 
+// Make LazyServiceRegistrar static so that multiple calls to
+// registerLazyPassthroughServiceImplementation work as expected: each HAL is registered and the
+// process only exits once all HALs have 0 clients.
+static inline std::shared_ptr<LazyServiceRegistrar> getOrCreateLazyServiceRegistrar() {
+    using android::hardware::LazyServiceRegistrar;
+    static auto serviceCounter(std::make_shared<LazyServiceRegistrar>());
+    return serviceCounter;
+}
+
 /**
  * Registers a passthrough service implementation that exits when there are 0 clients.
  *
@@ -102,15 +111,9 @@ status_t defaultPassthroughServiceImplementation(size_t maxThreads = 1) {
 template <class Interface>
 __attribute__((warn_unused_result)) status_t registerLazyPassthroughServiceImplementation(
     const std::string& name = "default") {
-    // Make LazyServiceRegistrar static so that multiple calls to
-    // registerLazyPassthroughServiceImplementation work as expected: each HAL is registered and the
-    // process only exits once all HALs have 0 clients.
-    using android::hardware::LazyServiceRegistrar;
-    static auto serviceCounter(std::make_shared<LazyServiceRegistrar>());
-
     return details::registerPassthroughServiceImplementation<Interface>(
         [](const sp<Interface>& service, const std::string& name) {
-            return serviceCounter->registerService(service, name);
+            return getOrCreateLazyServiceRegistrar()->registerService(service, name);
         },
         name);
 }

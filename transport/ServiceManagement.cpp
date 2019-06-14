@@ -769,6 +769,13 @@ sp<::android::hidl::base::V1_0::IBase> getRawServiceInternal(const std::string& 
     const char* env = std::getenv("TREBLE_TESTING_OVERRIDE");
     const bool trebleTestingOverride = env && !strcmp(env, "true");
     const bool vintfLegacy = (transport == Transport::EMPTY);
+
+    ALOGE("getService: Potential race detected. The VINTF manifest is not being enforced. If a HAL "
+          "server has a delay in starting and it is not in the manifest, it will not be retrieved. "
+          "Please make sure all HALs on this device are in the VINTF manifest and enable "
+          "PRODUCT_ENFORCE_VINTF_MANIFEST on this device (this is also enabled by "
+          "PRODUCT_FULL_TREBLE). PRODUCT_ENFORCE_VINTF_MANIFEST will ensure that no race condition "
+          "is possible here.");
 #endif  // ENFORCE_VINTF_MANIFEST
 
     for (int tries = 0; !getStub && (vintfHwbinder || vintfLegacy); tries++) {
