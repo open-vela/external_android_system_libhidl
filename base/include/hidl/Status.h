@@ -143,8 +143,6 @@ namespace details {
 
         template <typename T, typename U>
         friend Return<U> StatusOf(const Return<T> &other);
-    protected:
-        void onValueRetrieval() const;
     public:
         void assertOk() const;
         return_status() {}
@@ -226,7 +224,7 @@ public:
     ~Return() = default;
 
     operator T() const {
-        onValueRetrieval();  // assert okay
+        assertOk();
         return mVal;
     }
 
@@ -255,7 +253,7 @@ public:
     ~Return() = default;
 
     operator sp<T>() const {
-        onValueRetrieval();  // assert okay
+        assertOk();
         return mVal;
     }
 
