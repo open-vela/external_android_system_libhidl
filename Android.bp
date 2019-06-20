@@ -22,6 +22,14 @@ cc_defaults {
     ],
 }
 
+phony {
+    name: "libhidl",
+    required: [
+        "libhidlbase",
+        "libhidltransport",
+    ],
+}
+
 cc_test {
     name: "libhidl_test",
     defaults: ["libhidl-defaults"],
