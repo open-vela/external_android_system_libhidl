@@ -16,16 +16,11 @@
 
 #define LOG_TAG "LibHidlTest"
 
-#pragma clang diagnostic push
-#pragma clang diagnostic fatal "-Wpadded"
-#include <hidl/HidlInternal.h>
-#include <hidl/HidlSupport.h>
-#pragma clang diagnostic pop
-
 #include <android-base/logging.h>
 #include <android/hidl/memory/1.0/IMemory.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <hidl/HidlSupport.h>
 #include <hidl/ServiceManagement.h>
 #include <hidl/Status.h>
 #include <hidl/TaskRunner.h>
@@ -324,6 +319,37 @@ TEST_F(LibHidlTest, VecRangeCtorTest) {
     EXPECT_EQ(sum, 1 + 2 + 3);
 }
 
+struct FailsIfCopied {
+    FailsIfCopied() {}
+
+    // add failure if copied since in general this can be expensive
+    FailsIfCopied(const FailsIfCopied& o) { *this = o; }
+    FailsIfCopied& operator=(const FailsIfCopied&) {
+        ADD_FAILURE() << "FailsIfCopied copied";
+        return *this;
+    }
+
+    // fine to move this type since in general this is cheaper
+    FailsIfCopied(FailsIfCopied&& o) = default;
+    FailsIfCopied& operator=(FailsIfCopied&&) = default;
+};
+
+TEST_F(LibHidlTest, VecResizeNoCopy) {
+    using android::hardware::hidl_vec;
+
+    hidl_vec<FailsIfCopied> noCopies;
+    noCopies.resize(3);  // instantiates three elements
+
+    FailsIfCopied* oldPointer = noCopies.data();
+
+    noCopies.resize(6);  // should move three elements, not copy
+
+    // oldPointer should be invalidated at this point.
+    // hidl_vec doesn't currently try to realloc but if it ever switches
+    // to an implementation that does, this test wouldn't do anything.
+    EXPECT_NE(oldPointer, noCopies.data());
+}
+
 TEST_F(LibHidlTest, ArrayTest) {
     using android::hardware::hidl_array;
     int32_t array[] = {5, 6, 7};
@@ -491,51 +517,6 @@ TEST_F(LibHidlTest, PreloadTest) {
     EXPECT_FALSE(isLibraryOpen(kLib));
     preloadPassthroughService<IMemory>();
     EXPECT_TRUE(isLibraryOpen(kLib));
-}
-
-template <typename T, size_t start, size_t end>
-static void assertZeroInRange(const T* t) {
-    static_assert(start < sizeof(T));
-    static_assert(end <= sizeof(T));
-
-    const uint8_t* ptr = reinterpret_cast<const uint8_t*>(t);
-
-    for (size_t i = start; i < end; i++) {
-        EXPECT_EQ(0, ptr[i]);
-    }
-}
-
-template <typename T, size_t start, size_t end>
-static void uninitTest() {
-    uint8_t buf[sizeof(T)];
-    memset(buf, 0xFF, sizeof(T));
-
-    T* type = new (buf) T;
-    assertZeroInRange<T, start, end>(type);
-    type->~T();
-}
-
-TEST_F(LibHidlTest, HidlVecUninit) {
-    using ::android::hardware::hidl_vec;
-    struct SomeType {};
-    static_assert(sizeof(hidl_vec<SomeType>) == 16);
-
-    // padding after mOwnsBuffer
-    uninitTest<hidl_vec<SomeType>, 13, 16>();
-}
-TEST_F(LibHidlTest, HidlHandleUninit) {
-    using ::android::hardware::hidl_handle;
-    static_assert(sizeof(hidl_handle) == 16);
-
-    // padding after mOwnsHandle
-    uninitTest<hidl_handle, 9, 16>();
-}
-TEST_F(LibHidlTest, HidlStringUninit) {
-    using ::android::hardware::hidl_string;
-    static_assert(sizeof(hidl_string) == 16);
-
-    // padding after mOwnsBuffer
-    uninitTest<hidl_string, 13, 16>();
 }
 
 int main(int argc, char **argv) {
