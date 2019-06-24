@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#define LOG_TAG "ServiceManagement"
+#define LOG_TAG "HidlServiceManagement"
 
 #include <android/dlext.h>
 #include <condition_variable>
