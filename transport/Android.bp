@@ -80,9 +80,9 @@ cc_library_static {
         "HidlBinderSupport.cpp",
         "HidlLazyUtils.cpp",
         "HidlPassthroughSupport.cpp",
-        "HidlServiceManagement.cpp",
         "HidlTransportSupport.cpp",
         "HidlTransportUtils.cpp",
+        "ServiceManagement.cpp",
         "Static.cpp"
     ],
 
