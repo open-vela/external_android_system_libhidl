@@ -123,7 +123,7 @@ SimpleBestFitAllocator::~SimpleBestFitAllocator() {
         // and generates a false positive warning about accessing
         // memory that is already freed.
         // Add an "assert" to avoid the confusion.
-        LOG_ALWAYS_FATAL_IF(mList.front() == removed);
+        LOG_ALWAYS_FATAL_IF(mList.head() == removed);
 #endif
         delete removed;
     }
@@ -221,9 +221,8 @@ SimpleBestFitAllocator::chunk_t* SimpleBestFitAllocator::dealloc(size_t start) {
                     if (p->free || !cur->size) {
                         freed = p;
                         p->size += cur->size;
-                        pos = mList.erase(pos);
+                        mList.erase(pos);
                         delete cur;
-                        if (pos == mList.end()) break;
                     }
                 }
                 if (++pos == mList.end()) break;
@@ -241,7 +240,7 @@ SimpleBestFitAllocator::chunk_t* SimpleBestFitAllocator::dealloc(size_t start) {
             return freed;
         }
     }
-    return nullptr;
+    return 0;
 }
 
 void SimpleBestFitAllocator::dump(const char* tag) const {
