@@ -17,7 +17,7 @@
 #define LOG_TAG "LibHidlTest"
 
 #include <android-base/logging.h>
-#include <android/hardware/tests/inheritance/1.0/IParent.h>
+#include <android/hidl/memory/1.0/IMemory.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <hidl/HidlSupport.h>
@@ -280,6 +280,21 @@ TEST_F(LibHidlTest, VecEqTest) {
     EXPECT_TRUE(hv1 != hv3);
 }
 
+TEST_F(LibHidlTest, VecEqInitializerTest) {
+    std::vector<int32_t> reference{5, 6, 7};
+    android::hardware::hidl_vec<int32_t> hv1{1, 2, 3};
+    hv1 = {5, 6, 7};
+    android::hardware::hidl_vec<int32_t> hv2;
+    hv2 = {5, 6, 7};
+    android::hardware::hidl_vec<int32_t> hv3;
+    hv3 = {5, 6, 8};
+
+    // use the == and != operator intentionally here
+    EXPECT_TRUE(hv1 == hv2);
+    EXPECT_TRUE(hv1 == reference);
+    EXPECT_TRUE(hv1 != hv3);
+}
+
 TEST_F(LibHidlTest, VecRangeCtorTest) {
     struct ConvertibleType {
         int val;
@@ -302,6 +317,37 @@ TEST_F(LibHidlTest, VecRangeCtorTest) {
         sum += hv[i];
     }
     EXPECT_EQ(sum, 1 + 2 + 3);
+}
+
+struct FailsIfCopied {
+    FailsIfCopied() {}
+
+    // add failure if copied since in general this can be expensive
+    FailsIfCopied(const FailsIfCopied& o) { *this = o; }
+    FailsIfCopied& operator=(const FailsIfCopied&) {
+        ADD_FAILURE() << "FailsIfCopied copied";
+        return *this;
+    }
+
+    // fine to move this type since in general this is cheaper
+    FailsIfCopied(FailsIfCopied&& o) = default;
+    FailsIfCopied& operator=(FailsIfCopied&&) = default;
+};
+
+TEST_F(LibHidlTest, VecResizeNoCopy) {
+    using android::hardware::hidl_vec;
+
+    hidl_vec<FailsIfCopied> noCopies;
+    noCopies.resize(3);  // instantiates three elements
+
+    FailsIfCopied* oldPointer = noCopies.data();
+
+    noCopies.resize(6);  // should move three elements, not copy
+
+    // oldPointer should be invalidated at this point.
+    // hidl_vec doesn't currently try to realloc but if it ever switches
+    // to an implementation that does, this test wouldn't do anything.
+    EXPECT_NE(oldPointer, noCopies.data());
 }
 
 TEST_F(LibHidlTest, ArrayTest) {
@@ -390,12 +436,15 @@ TEST_F(LibHidlTest, HidlVersionTest) {
     hidl_version v3_0b{3,0};
 
     EXPECT_TRUE(v1_0 < v2_0);
+    EXPECT_TRUE(v1_0 != v2_0);
     EXPECT_TRUE(v2_0 < v2_1);
     EXPECT_TRUE(v2_1 < v3_0);
     EXPECT_TRUE(v2_0 > v1_0);
+    EXPECT_TRUE(v2_0 != v1_0);
     EXPECT_TRUE(v2_1 > v2_0);
     EXPECT_TRUE(v3_0 > v2_1);
     EXPECT_TRUE(v3_0 == v3_0b);
+    EXPECT_FALSE(v3_0 != v3_0b);
     EXPECT_TRUE(v3_0 <= v3_0b);
     EXPECT_TRUE(v2_2 <= v3_0);
     EXPECT_TRUE(v3_0 >= v3_0b);
@@ -459,12 +508,14 @@ TEST_F(LibHidlTest, StatusStringTest) {
 
 TEST_F(LibHidlTest, PreloadTest) {
     using ::android::hardware::preloadPassthroughService;
-    using ::android::hardware::tests::inheritance::V1_0::IParent;
+    using ::android::hidl::memory::V1_0::IMemory;
 
-    static const std::string kLib = "android.hardware.tests.inheritance@1.0-impl.so";
+    // installed on all devices by default in both bitnesses and not otherwise a dependency of this
+    // test.
+    static const std::string kLib = "android.hidl.memory@1.0-impl.so";
 
     EXPECT_FALSE(isLibraryOpen(kLib));
-    preloadPassthroughService<IParent>();
+    preloadPassthroughService<IMemory>();
     EXPECT_TRUE(isLibraryOpen(kLib));
 }
 
