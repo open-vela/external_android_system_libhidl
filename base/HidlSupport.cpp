@@ -57,7 +57,7 @@ hidl_handle::hidl_handle(const hidl_handle& other) : hidl_handle() {
 }
 
 // move constructor.
-hidl_handle::hidl_handle(hidl_handle&& other) noexcept {
+hidl_handle::hidl_handle(hidl_handle&& other) noexcept : hidl_handle() {
     mOwnsHandle = false;
     *this = std::move(other);
 }
