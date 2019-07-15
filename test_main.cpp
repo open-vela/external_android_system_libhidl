@@ -489,6 +489,22 @@ TEST_F(LibHidlTest, ReturnTest) {
     EXPECT_EQ(three, ret.withDefault(three));
 }
 
+TEST_F(LibHidlTest, ReturnDies) {
+    using ::android::hardware::Return;
+    using ::android::hardware::Status;
+
+    EXPECT_DEATH({ Return<void>(Status::fromStatusT(-EBUSY)); }, "");
+    EXPECT_DEATH({ Return<void>(Status::fromStatusT(-EBUSY)).isDeadObject(); }, "");
+    EXPECT_DEATH(
+            {
+                Return<int> ret = Return<int>(Status::fromStatusT(-EBUSY));
+                int foo = ret;  // should crash here
+                (void)foo;
+                ret.isOk();
+            },
+            "");
+}
+
 std::string toString(const ::android::hardware::Status &s) {
     using ::android::hardware::operator<<;
     std::ostringstream oss;
