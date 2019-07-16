@@ -578,8 +578,11 @@ public:
     iterator end() { return data()+mSize; }
     const_iterator begin() const { return data(); }
     const_iterator end() const { return data()+mSize; }
+    iterator find(const T& v) { return std::find(begin(), end(), v); }
+    const_iterator find(const T& v) const { return std::find(begin(), end(), v); }
+    bool contains(const T& v) const { return find(v) != end(); }
 
-private:
+  private:
     details::hidl_pointer<T> mBuffer;
     uint32_t mSize;
     bool mOwnsBuffer;
