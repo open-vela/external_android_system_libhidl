@@ -355,6 +355,41 @@ TEST_F(LibHidlTest, VecResizeNoCopy) {
     EXPECT_NE(oldPointer, noCopies.data());
 }
 
+TEST_F(LibHidlTest, VecFindTest) {
+    using android::hardware::hidl_vec;
+    hidl_vec<int32_t> hv1 = {10, 20, 30, 40};
+    const hidl_vec<int32_t> hv2 = {1, 2, 3, 4};
+
+    auto it = hv1.find(20);
+    EXPECT_EQ(20, *it);
+    *it = 21;
+    EXPECT_EQ(21, *it);
+    it = hv1.find(20);
+    EXPECT_EQ(hv1.end(), it);
+    it = hv1.find(21);
+    EXPECT_EQ(21, *it);
+
+    auto cit = hv2.find(4);
+    EXPECT_EQ(4, *cit);
+}
+
+TEST_F(LibHidlTest, VecContainsTest) {
+    using android::hardware::hidl_vec;
+    hidl_vec<int32_t> hv1 = {10, 20, 30, 40};
+    const hidl_vec<int32_t> hv2 = {0, 1, 2, 3, 4};
+
+    EXPECT_TRUE(hv1.contains(10));
+    EXPECT_TRUE(hv1.contains(40));
+    EXPECT_FALSE(hv1.contains(1));
+    EXPECT_FALSE(hv1.contains(0));
+    EXPECT_TRUE(hv2.contains(0));
+    EXPECT_FALSE(hv2.contains(10));
+
+    hv1[0] = 11;
+    EXPECT_FALSE(hv1.contains(10));
+    EXPECT_TRUE(hv1.contains(11));
+}
+
 TEST_F(LibHidlTest, ArrayTest) {
     using android::hardware::hidl_array;
     int32_t array[] = {5, 6, 7};
