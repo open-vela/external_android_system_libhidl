@@ -13,17 +13,26 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
+#include <algorithm>
 #include <functional>
 #include <map>
 #include <string>
 
+#include <android-base/properties.h>
+#include <android-base/strings.h>
 #include <android/hidl/base/1.0/IBase.h>
 #include <android/hidl/manager/1.0/IServiceManager.h>
 #include <gtest/gtest.h>
+#include <hidl-util/FqInstance.h>
 #include <hidl/HidlBinderSupport.h>
 #include <hidl/ServiceManagement.h>
+#include <init-test-utils/service_utils.h>
 
+using android::FqInstance;
+using android::FQName;
+using android::sp;
+using android::wp;
+using android::base::Result;
 using android::hardware::hidl_array;
 using android::hardware::hidl_death_recipient;
 using android::hardware::hidl_handle;
@@ -33,8 +42,8 @@ using android::hardware::IBinder;
 using android::hardware::toBinder;
 using android::hidl::base::V1_0::IBase;
 using android::hidl::manager::V1_0::IServiceManager;
-using android::sp;
-using android::wp;
+using android::init::ServiceInterfacesMap;
+using PidInterfacesMap = std::map<pid_t, std::set<FqInstance>>;
 
 template <typename T>
 static inline ::testing::AssertionResult isOk(const ::android::hardware::Return<T>& ret) {
@@ -48,6 +57,25 @@ struct Hal {
     sp<IBase> service;
     std::string name;  // space separated list of android.hidl.foo@1.0::IFoo/instance-name
 };
+
+std::string FqInstancesToString(const std::set<FqInstance>& instances) {
+    std::set<std::string> instance_strings;
+    for (const FqInstance& instance : instances) {
+        instance_strings.insert(instance.string());
+    }
+    return android::base::Join(instance_strings, " ");
+}
+
+pid_t GetServiceDebugPid(const std::string& service) {
+    return android::base::GetIntProperty("init.svc_debug_pid." + service, 0);
+}
+
+template <typename T>
+std::set<T> SetDifference(const std::set<T>& a, const std::set<T>& b) {
+    std::set<T> diff;
+    std::set_difference(a.begin(), a.end(), b.begin(), b.end(), std::inserter(diff, diff.begin()));
+    return diff;
+}
 
 class VtsHalBaseV1_0TargetTest : public ::testing::Test {
    public:
@@ -98,6 +126,25 @@ class VtsHalBaseV1_0TargetTest : public ::testing::Test {
         for (auto iter = all_hals_.begin(); iter != all_hals_.end(); ++iter) {
             check(iter->second);
         }
+    }
+
+    PidInterfacesMap GetPidInterfacesMap() {
+        PidInterfacesMap result;
+        EXPECT_OK(default_manager_->debugDump([&result](const auto& list) {
+            for (const auto& debug_info : list) {
+                if (debug_info.pid != static_cast<int32_t>(IServiceManager::PidConstant::NO_PID)) {
+                    FQName fqName;
+                    ASSERT_TRUE(fqName.setTo(debug_info.interfaceName.c_str()))
+                            << "Unable to parse interface: '" << debug_info.interfaceName.c_str();
+                    FqInstance fqInstance;
+                    ASSERT_TRUE(fqInstance.setTo(fqName, debug_info.instanceName.c_str()));
+                    if (fqInstance.getFqName() != android::gIBaseFqName) {
+                        result[debug_info.pid].insert(fqInstance);
+                    }
+                }
+            }
+        }));
+        return result;
     }
 
     // default service manager
@@ -163,6 +210,36 @@ TEST_F(VtsHalBaseV1_0TargetTest, HashChain) {
             EXPECT_NE(0u, hashChain.size()) << "Invalid hash chain " << base.name;
         })) << base.name;
     });
+}
+
+// TODO(b/138114550): Also test that services serve all declared interfaces.
+TEST_F(VtsHalBaseV1_0TargetTest, ServiceDeclaresAllServedInterfaces) {
+    Result<ServiceInterfacesMap> service_interfaces_map =
+            android::init::GetOnDeviceServiceInterfacesMap();
+    ASSERT_TRUE(service_interfaces_map) << service_interfaces_map.error();
+    PidInterfacesMap pid_interfaces_map = GetPidInterfacesMap();
+
+    for (const auto& [service, declared_interfaces] : *service_interfaces_map) {
+        if (declared_interfaces.empty()) {
+            std::cout << "[WARNING] Service '" << service << "' does not declare any interfaces"
+                      << std::endl;
+            continue;
+        }
+        pid_t pid = GetServiceDebugPid(service);
+        // TODO(b/138114550): Check lazy services that are not currently running
+        // (when pid == 0).
+        if (pid != 0) {
+            std::set<FqInstance> served_interfaces = pid_interfaces_map[pid];
+            std::set<FqInstance> diff = SetDifference(served_interfaces, declared_interfaces);
+            EXPECT_TRUE(diff.empty())
+                    << "Service '" << service << "' serves interfaces that it does not declare."
+                    << std::endl
+                    << "  Served: '" << FqInstancesToString(served_interfaces) << "'" << std::endl
+                    << "  Declared: '" << FqInstancesToString(declared_interfaces) << "'"
+                    << std::endl
+                    << "  Difference: '" << FqInstancesToString(diff) << "'";
+        }
+    }
 }
 
 int main(int argc, char** argv) {
