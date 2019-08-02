@@ -13,11 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#define LOG_TAG "vts_ibase_test"
+
 #include <algorithm>
 #include <functional>
 #include <map>
 #include <string>
 
+#include <android-base/logging.h>
 #include <android-base/properties.h>
 #include <android-base/strings.h>
 #include <android/hidl/base/1.0/IBase.h>
@@ -63,7 +66,7 @@ std::string FqInstancesToString(const std::set<FqInstance>& instances) {
     for (const FqInstance& instance : instances) {
         instance_strings.insert(instance.string());
     }
-    return android::base::Join(instance_strings, " ");
+    return android::base::Join(instance_strings, "\n");
 }
 
 pid_t GetServiceDebugPid(const std::string& service) {
@@ -212,18 +215,24 @@ TEST_F(VtsHalBaseV1_0TargetTest, HashChain) {
     });
 }
 
-// TODO(b/138114550): Also test that services serve all declared interfaces.
-TEST_F(VtsHalBaseV1_0TargetTest, ServiceDeclaresAllServedInterfaces) {
+TEST_F(VtsHalBaseV1_0TargetTest, ServiceProvidesAndDeclaresTheSameInterfaces) {
     Result<ServiceInterfacesMap> service_interfaces_map =
             android::init::GetOnDeviceServiceInterfacesMap();
     ASSERT_TRUE(service_interfaces_map) << service_interfaces_map.error();
     PidInterfacesMap pid_interfaces_map = GetPidInterfacesMap();
 
-    for (const auto& [service, declared_interfaces] : *service_interfaces_map) {
+    for (auto [service, declared_interfaces] : *service_interfaces_map) {
         if (declared_interfaces.empty()) {
-            std::cout << "[WARNING] Service '" << service << "' does not declare any interfaces"
+            LOG(INFO) << "Service '" << service << "' does not declare any interfaces."
                       << std::endl;
             continue;
+        }
+        for (auto it = declared_interfaces.begin(); it != declared_interfaces.end();) {
+            if (it->getFqName() == android::gIBaseFqName) {
+                it = declared_interfaces.erase(it);
+            } else {
+                ++it;
+            }
         }
         pid_t pid = GetServiceDebugPid(service);
         // TODO(b/138114550): Check lazy services that are not currently running
@@ -234,10 +243,22 @@ TEST_F(VtsHalBaseV1_0TargetTest, ServiceDeclaresAllServedInterfaces) {
             EXPECT_TRUE(diff.empty())
                     << "Service '" << service << "' serves interfaces that it does not declare."
                     << std::endl
-                    << "  Served: '" << FqInstancesToString(served_interfaces) << "'" << std::endl
-                    << "  Declared: '" << FqInstancesToString(declared_interfaces) << "'"
+                    << "  Served:" << std::endl
+                    << FqInstancesToString(served_interfaces) << std::endl
+                    << "  Declared: " << std::endl
+                    << FqInstancesToString(declared_interfaces) << std::endl
+                    << "  Difference: " << std::endl
+                    << FqInstancesToString(diff);
+            diff = SetDifference(declared_interfaces, served_interfaces);
+            EXPECT_TRUE(diff.empty())
+                    << "Service '" << service << "' declares interfaces that it does not serve."
                     << std::endl
-                    << "  Difference: '" << FqInstancesToString(diff) << "'";
+                    << "  Declared: " << std::endl
+                    << FqInstancesToString(declared_interfaces) << std::endl
+                    << "  Served:" << std::endl
+                    << FqInstancesToString(served_interfaces) << std::endl
+                    << "  Difference: " << std::endl
+                    << FqInstancesToString(diff);
         }
     }
 }
