@@ -30,10 +30,10 @@ cc_library {
     ],
 
     shared_libs: [
-        "libutils",
-        "liblog",
-        "libhidlbase",
         "android.hidl.token@1.0",
+        "libhidlbase",
+        "liblog",
+        "libutils",
     ],
 
     export_header_lib_headers: [
