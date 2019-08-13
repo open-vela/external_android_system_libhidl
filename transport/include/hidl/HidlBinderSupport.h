@@ -24,12 +24,11 @@
 #include <hidl/HidlSupport.h>
 #include <hidl/HidlTransportUtils.h>
 #include <hidl/MQDescriptor.h>
-#include <hidl/Static.h>
 #include <hwbinder/IBinder.h>
-#include <hwbinder/IPCThreadState.h>
 #include <hwbinder/Parcel.h>
-#include <hwbinder/ProcessState.h>
-// Defines functions for hidl_string, hidl_version, Status, hidl_vec, MQDescriptor,
+#include <log/log.h>  // TODO(b/65843592): remove. Too many users depending on this transitively.
+
+// Defines functions for hidl_string, Status, hidl_vec, MQDescriptor,
 // etc. to interact with Parcel.
 
 namespace android {
@@ -49,6 +48,14 @@ private:
     wp<::android::hidl::base::V1_0::IBase> mBase;
 };
 
+// ---------------------- hidl_handle
+
+status_t readEmbeddedFromParcel(const hidl_handle &handle,
+        const Parcel &parcel, size_t parentHandle, size_t parentOffset);
+
+status_t writeEmbeddedToParcel(const hidl_handle &handle,
+        Parcel *parcel, size_t parentHandle, size_t parentOffset);
+
 // ---------------------- hidl_memory
 
 status_t readEmbeddedFromParcel(const hidl_memory &memory,
@@ -64,13 +71,6 @@ status_t readEmbeddedFromParcel(const hidl_string &string,
 
 status_t writeEmbeddedToParcel(const hidl_string &string,
         Parcel *parcel, size_t parentHandle, size_t parentOffset);
-
-// ---------------------- hidl_version
-
-status_t writeToParcel(const hidl_version &version, android::hardware::Parcel& parcel);
-
-// Caller is responsible for freeing the returned object.
-hidl_version* readFromParcel(const android::hardware::Parcel& parcel);
 
 // ---------------------- Status
 
@@ -178,128 +178,11 @@ template<typename T, MQFlavor flavor>
     return _hidl_err;
 }
 
-// ---------------------- pointers for HIDL
-
-template <typename T>
-static status_t readEmbeddedReferenceFromParcel(
-        T const* * /* bufptr */,
-        const Parcel & parcel,
-        size_t parentHandle,
-        size_t parentOffset,
-        size_t *handle,
-        bool *shouldResolveRefInBuffer
-    ) {
-    // *bufptr is ignored because, if I am embedded in some
-    // other buffer, the kernel should have fixed me up already.
-    bool isPreviouslyWritten;
-    status_t result = parcel.readEmbeddedReference(
-        nullptr, // ignored, not written to bufptr.
-        handle,
-        parentHandle,
-        parentOffset,
-        &isPreviouslyWritten);
-    // tell caller to run T::readEmbeddedToParcel and
-    // T::readEmbeddedReferenceToParcel if necessary.
-    // It is not called here because we don't know if these two are valid methods.
-    *shouldResolveRefInBuffer = !isPreviouslyWritten;
-    return result;
-}
-
-template <typename T>
-static status_t writeEmbeddedReferenceToParcel(
-        T const* buf,
-        Parcel *parcel, size_t parentHandle, size_t parentOffset,
-        size_t *handle,
-        bool *shouldResolveRefInBuffer
-        ) {
-
-    if(buf == nullptr) {
-        *shouldResolveRefInBuffer = false;
-        return parcel->writeEmbeddedNullReference(handle, parentHandle, parentOffset);
-    }
-
-    // find whether the buffer exists
-    size_t childHandle, childOffset;
-    status_t result;
-    bool found;
-
-    result = parcel->findBuffer(buf, sizeof(T), &found, &childHandle, &childOffset);
-
-    // tell caller to run T::writeEmbeddedToParcel and
-    // T::writeEmbeddedReferenceToParcel if necessary.
-    // It is not called here because we don't know if these two are valid methods.
-    *shouldResolveRefInBuffer = !found;
-
-    if(result != OK) {
-        return result; // bad pointers and length given
-    }
-    if(!found) { // did not find it.
-        return parcel->writeEmbeddedBuffer(buf, sizeof(T), handle,
-                parentHandle, parentOffset);
-    }
-    // found the buffer. easy case.
-    return parcel->writeEmbeddedReference(
-            handle,
-            childHandle,
-            childOffset,
-            parentHandle,
-            parentOffset);
-}
-
-template <typename T>
-static status_t readReferenceFromParcel(
-        T const* *bufptr,
-        const Parcel & parcel,
-        size_t *handle,
-        bool *shouldResolveRefInBuffer
-    ) {
-    bool isPreviouslyWritten;
-    status_t result = parcel.readReference(reinterpret_cast<void const* *>(bufptr),
-            handle, &isPreviouslyWritten);
-    // tell caller to run T::readEmbeddedToParcel and
-    // T::readEmbeddedReferenceToParcel if necessary.
-    // It is not called here because we don't know if these two are valid methods.
-    *shouldResolveRefInBuffer = !isPreviouslyWritten;
-    return result;
-}
-
-template <typename T>
-static status_t writeReferenceToParcel(
-        T const *buf,
-        Parcel * parcel,
-        size_t *handle,
-        bool *shouldResolveRefInBuffer
-    ) {
-
-    if(buf == nullptr) {
-        *shouldResolveRefInBuffer = false;
-        return parcel->writeNullReference(handle);
-    }
-
-    // find whether the buffer exists
-    size_t childHandle, childOffset;
-    status_t result;
-    bool found;
-
-    result = parcel->findBuffer(buf, sizeof(T), &found, &childHandle, &childOffset);
-
-    // tell caller to run T::writeEmbeddedToParcel and
-    // T::writeEmbeddedReferenceToParcel if necessary.
-    // It is not called here because we don't know if these two are valid methods.
-    *shouldResolveRefInBuffer = !found;
-
-    if(result != OK) {
-        return result; // bad pointers and length given
-    }
-    if(!found) { // did not find it.
-        return parcel->writeBuffer(buf, sizeof(T), handle);
-    }
-    // found the buffer. easy case.
-    return parcel->writeReference(handle,
-        childHandle, childOffset);
-}
-
 // ---------------------- support for casting interfaces
+
+// Constructs a binder for this interface and caches it. If it has already been created
+// then it returns it.
+sp<IBinder> getOrCreateCachedBinder(::android::hidl::base::V1_0::IBase* ifacePtr);
 
 // Construct a smallest possible binder from the given interface.
 // If it is remote, then its remote() will be retrieved.
@@ -310,43 +193,7 @@ template <typename IType,
           typename = std::enable_if_t<std::is_same<details::i_tag, typename IType::_hidl_tag>::value>>
 sp<IBinder> toBinder(sp<IType> iface) {
     IType *ifacePtr = iface.get();
-    if (ifacePtr == nullptr) {
-        return nullptr;
-    }
-    if (ifacePtr->isRemote()) {
-        return ::android::hardware::IInterface::asBinder(
-            static_cast<BpInterface<IType>*>(ifacePtr));
-    } else {
-        std::string myDescriptor = details::getDescriptor(ifacePtr);
-        if (myDescriptor.empty()) {
-            // interfaceDescriptor fails
-            return nullptr;
-        }
-
-        // for get + set
-        std::unique_lock<std::mutex> _lock = details::gBnMap.lock();
-
-        wp<BHwBinder> wBnObj = details::gBnMap.getLocked(ifacePtr, nullptr);
-        sp<IBinder> sBnObj = wBnObj.promote();
-
-        if (sBnObj == nullptr) {
-            auto func = details::getBnConstructorMap().get(myDescriptor, nullptr);
-            if (!func) {
-                func = details::gBnConstructorMap.get(myDescriptor, nullptr);
-                if (!func) {
-                    return nullptr;
-                }
-            }
-
-            sBnObj = sp<IBinder>(func(static_cast<void*>(ifacePtr)));
-
-            if (sBnObj != nullptr) {
-                details::gBnMap.setLocked(ifacePtr, static_cast<BHwBinder*>(sBnObj.get()));
-            }
-        }
-
-        return sBnObj;
-    }
+    return getOrCreateCachedBinder(ifacePtr);
 }
 
 template <typename IType, typename ProxyType, typename StubType>
@@ -373,6 +220,8 @@ void configureBinderRpcThreadpool(size_t maxThreads, bool callerWillJoin);
 void joinBinderRpcThreadpool();
 int setupBinderPolling();
 status_t handleBinderPoll();
+
+void addPostCommandTask(const std::function<void(void)> task);
 
 }  // namespace hardware
 }  // namespace android
