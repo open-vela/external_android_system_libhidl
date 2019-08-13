@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 The Android Open Source Project
+ * Copyright (C) 2018 The Android Open Source Project
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,30 +14,16 @@
  * limitations under the License.
  */
 
-#include "HidlFetch.h"
+package android.hidl.safe_union@1.0;
 
-#include <string_view>
-
-#include "AshmemMapper.h"
-
-static constexpr std::string_view kAshmemMemoryName = "ashmem";
-
-namespace android {
-namespace hidl {
-namespace memory {
-namespace V1_0 {
-namespace implementation {
-
-IMapper* HIDL_FETCH_IMapper(const char* name) {
-    if (name == kAshmemMemoryName) {
-        return new AshmemMapper;
-    }
-
-    return nullptr;
-}
-
-}  // namespace implementation
-}  // namespace V1_0
-}  // namespace memory
-}  // namespace hidl
-}  // namespace android
+/**
+ * Unit type easily available to be used with safe_union.
+ *
+ * Example usage:
+ *
+ * safe_union MaybeFoo {
+ *     Monostate no_init;
+ *     Foo foo;
+ * };
+ */
+struct Monostate {};

@@ -3,7 +3,6 @@
 hidl_interface {
     name: "android.hidl.base@1.0",
     root: "android.hidl",
-    core_interface: true,
     vndk: {
         enabled: true,
     },
@@ -11,9 +10,5 @@ hidl_interface {
         "types.hal",
         "IBase.hal",
     ],
-    types: [
-        "DebugInfo",
-    ],
     gen_java: true,
 }
-
