@@ -19,28 +19,21 @@ cc_library {
     vndk: {
         enabled: true,
     },
-    double_loadable: true,
 
     srcs: [
         "HybridInterface.cpp",
     ],
 
-    header_libs: [
-        "libbinder_headers",
-    ],
-
     shared_libs: [
-        "android.hidl.token@1.0",
-        "libhidlbase",
-        "liblog",
         "libutils",
-    ],
-
-    export_header_lib_headers: [
-        "libbinder_headers",
+        "libbinder",
+        "liblog",
+        "libhidlbase",
+        "android.hidl.token@1.0",
     ],
 
     export_shared_lib_headers: [
+        "libbinder",
         "libhidlbase",
     ],
 

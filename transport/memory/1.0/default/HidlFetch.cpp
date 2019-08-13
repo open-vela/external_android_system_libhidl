@@ -16,11 +16,9 @@
 
 #include "HidlFetch.h"
 
-#include <string_view>
-
 #include "AshmemMapper.h"
 
-static constexpr std::string_view kAshmemMemoryName = "ashmem";
+static std::string kAshmemMemoryName = "ashmem";
 
 namespace android {
 namespace hidl {
