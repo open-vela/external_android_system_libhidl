@@ -723,32 +723,11 @@ bool handleCastError(const Return<bool>& castReturn, const std::string& descript
     return false;
 }
 
-#ifdef ENFORCE_VINTF_MANIFEST
-static constexpr bool kEnforceVintfManifest = true;
-#else
-static constexpr bool kEnforceVintfManifest = false;
-#endif
-
-#ifdef LIBHIDL_TARGET_DEBUGGABLE
-static constexpr bool kDebuggable = true;
-#else
-static constexpr bool kDebuggable = false;
-#endif
-
-static inline bool isTrebleTestingOverride() {
-    if (kEnforceVintfManifest && !kDebuggable) {
-        // don't allow testing override in production
-        return false;
-    }
-
-    const char* env = std::getenv("TREBLE_TESTING_OVERRIDE");
-    return env && !strcmp(env, "true");
-}
-
 sp<::android::hidl::base::V1_0::IBase> getRawServiceInternal(const std::string& descriptor,
                                                              const std::string& instance,
                                                              bool retry, bool getStub) {
-    using Transport = IServiceManager1_0::Transport;
+    using Transport = ::android::hidl::manager::V1_0::IServiceManager::Transport;
+    using ::android::hidl::manager::V1_0::IServiceManager;
     sp<Waiter> waiter;
 
     sp<IServiceManager1_1> sm;
@@ -774,18 +753,30 @@ sp<::android::hidl::base::V1_0::IBase> getRawServiceInternal(const std::string& 
 
     const bool vintfHwbinder = (transport == Transport::HWBINDER);
     const bool vintfPassthru = (transport == Transport::PASSTHROUGH);
-    const bool trebleTestingOverride = isTrebleTestingOverride();
-    const bool allowLegacy = !kEnforceVintfManifest || (trebleTestingOverride && kDebuggable);
-    const bool vintfLegacy = (transport == Transport::EMPTY) && allowLegacy;
 
-    if (!kEnforceVintfManifest) {
-        ALOGE("getService: Potential race detected. The VINTF manifest is not being enforced. If "
-              "a HAL server has a delay in starting and it is not in the manifest, it will not be "
-              "retrieved. Please make sure all HALs on this device are in the VINTF manifest and "
-              "enable PRODUCT_ENFORCE_VINTF_MANIFEST on this device (this is also enabled by "
-              "PRODUCT_FULL_TREBLE). PRODUCT_ENFORCE_VINTF_MANIFEST will ensure that no race "
-              "condition is possible here.");
-    }
+#ifdef ENFORCE_VINTF_MANIFEST
+
+#ifdef LIBHIDL_TARGET_DEBUGGABLE
+    const char* env = std::getenv("TREBLE_TESTING_OVERRIDE");
+    const bool trebleTestingOverride = env && !strcmp(env, "true");
+    const bool vintfLegacy = (transport == Transport::EMPTY) && trebleTestingOverride;
+#else   // ENFORCE_VINTF_MANIFEST but not LIBHIDL_TARGET_DEBUGGABLE
+    const bool trebleTestingOverride = false;
+    const bool vintfLegacy = false;
+#endif  // LIBHIDL_TARGET_DEBUGGABLE
+
+#else   // not ENFORCE_VINTF_MANIFEST
+    const char* env = std::getenv("TREBLE_TESTING_OVERRIDE");
+    const bool trebleTestingOverride = env && !strcmp(env, "true");
+    const bool vintfLegacy = (transport == Transport::EMPTY);
+
+    ALOGE("getService: Potential race detected. The VINTF manifest is not being enforced. If a HAL "
+          "server has a delay in starting and it is not in the manifest, it will not be retrieved. "
+          "Please make sure all HALs on this device are in the VINTF manifest and enable "
+          "PRODUCT_ENFORCE_VINTF_MANIFEST on this device (this is also enabled by "
+          "PRODUCT_FULL_TREBLE). PRODUCT_ENFORCE_VINTF_MANIFEST will ensure that no race condition "
+          "is possible here.");
+#endif  // ENFORCE_VINTF_MANIFEST
 
     for (int tries = 0; !getStub && (vintfHwbinder || vintfLegacy); tries++) {
         if (waiter == nullptr && tries > 0) {
@@ -829,7 +820,7 @@ sp<::android::hidl::base::V1_0::IBase> getRawServiceInternal(const std::string& 
     }
 
     if (getStub || vintfPassthru || vintfLegacy) {
-        const sp<IServiceManager1_0> pm = getPassthroughServiceManager();
+        const sp<IServiceManager> pm = getPassthroughServiceManager();
         if (pm != nullptr) {
             sp<IBase> base = pm->get(descriptor, instance).withDefault(nullptr);
             if (!getStub || trebleTestingOverride) {
@@ -852,19 +843,6 @@ status_t registerAsServiceInternal(const sp<IBase>& service, const std::string& 
         return INVALID_OPERATION;
     }
 
-    const std::string descriptor = getDescriptor(service.get());
-
-    if (kEnforceVintfManifest && !isTrebleTestingOverride()) {
-        using Transport = IServiceManager1_0::Transport;
-        Transport transport = sm->getTransport(descriptor, name);
-
-        if (transport != Transport::HWBINDER) {
-            LOG(ERROR) << "Service " << descriptor << "/" << name
-                       << " must be in VINTF manifest in order to register/get.";
-            return UNKNOWN_ERROR;
-        }
-    }
-
     bool registered = false;
     Return<void> ret = service->interfaceChain([&](const auto& chain) {
         registered = sm->addWithChain(name.c_str(), service, chain).withDefault(false);
@@ -875,7 +853,7 @@ status_t registerAsServiceInternal(const sp<IBase>& service, const std::string& 
     }
 
     if (registered) {
-        onRegistrationImpl(descriptor, name);
+        onRegistrationImpl(getDescriptor(service.get()), name);
     }
 
     return registered ? OK : UNKNOWN_ERROR;
