@@ -35,8 +35,10 @@ bool debuggable() {
 }
 }  // namespace details
 
-hidl_handle::hidl_handle() : mHandle(nullptr), mOwnsHandle(false) {
-    memset(mPad, 0, sizeof(mPad));
+hidl_handle::hidl_handle() {
+    memset(this, 0, sizeof(*this));
+    // mHandle = nullptr;
+    // mOwnsHandle = false;
 }
 
 hidl_handle::~hidl_handle() {
@@ -55,7 +57,7 @@ hidl_handle::hidl_handle(const hidl_handle& other) : hidl_handle() {
 }
 
 // move constructor.
-hidl_handle::hidl_handle(hidl_handle&& other) noexcept : hidl_handle() {
+hidl_handle::hidl_handle(hidl_handle&& other) noexcept {
     mOwnsHandle = false;
     *this = std::move(other);
 }
@@ -136,8 +138,11 @@ void hidl_handle::freeHandle() {
 
 static const char *const kEmptyString = "";
 
-hidl_string::hidl_string() : mBuffer(kEmptyString), mSize(0), mOwnsBuffer(false) {
-    memset(mPad, 0, sizeof(mPad));
+hidl_string::hidl_string() {
+    memset(this, 0, sizeof(*this));
+    // mSize is zero
+    // mOwnsBuffer is false
+    mBuffer = kEmptyString;
 }
 
 hidl_string::~hidl_string() {
