@@ -559,6 +559,18 @@ sp<IServiceManager1_1> getPassthroughServiceManager1_1() {
     return manager;
 }
 
+std::vector<std::string> getAllHalInstanceNames(const std::string& descriptor) {
+    std::vector<std::string> ret;
+    auto sm = defaultServiceManager1_2();
+    sm->listManifestByInterface(descriptor, [&](const auto& instances) {
+        ret.reserve(instances.size());
+        for (const auto& i : instances) {
+            ret.push_back(i);
+        }
+    });
+    return ret;
+}
+
 namespace details {
 
 void preloadPassthroughService(const std::string &descriptor) {
