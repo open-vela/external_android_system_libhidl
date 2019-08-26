@@ -30,6 +30,11 @@ phony {
     ],
 }
 
+cc_library_headers {
+    name: "libhidl_gtest_helpers",
+    export_include_dirs: ["gtest_helpers"],
+}
+
 cc_test {
     name: "libhidl_test",
     defaults: ["libhidl-defaults"],
