@@ -24,6 +24,8 @@ cc_test {
     shared_libs: [
         "libbase",
         "libhidlbase",
+        "libhidltransport",
+        "libhwbinder",
         "liblog",
         "libutils",
         "libprotobuf-cpp-lite",
