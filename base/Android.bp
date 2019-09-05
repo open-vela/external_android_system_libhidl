@@ -53,4 +53,6 @@ cc_library {
             cflags: ["-DLIBHIDL_TARGET_DEBUGGABLE"],
         },
     },
+
+    visibility: ["//system/libhidl:__subpackages__"],
 }
