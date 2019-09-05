@@ -94,4 +94,6 @@ cc_library_static {
             cflags: ["-DENFORCE_VINTF_MANIFEST"]
         },
     },
+
+    visibility: ["//system/libhidl:__subpackages__"],
 }
