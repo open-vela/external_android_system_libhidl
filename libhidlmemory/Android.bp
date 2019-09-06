@@ -26,7 +26,6 @@ cc_library {
         "libutils",
         "libcutils",
         "libhidlbase",
-        "libhidltransport",
         "android.hidl.memory@1.0",
         "android.hidl.memory.token@1.0",
     ],

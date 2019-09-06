@@ -26,7 +26,6 @@ phony {
     name: "libhidl",
     required: [
         "libhidlbase",
-        "libhidltransport",
     ],
 }
 
@@ -46,8 +45,6 @@ cc_test {
         "android.hidl.memory@1.0",
         "libbase",
         "libhidlbase",
-        "libhidltransport",
-        "libhwbinder",
         "liblog",
         "libutils",
         "libcutils",
