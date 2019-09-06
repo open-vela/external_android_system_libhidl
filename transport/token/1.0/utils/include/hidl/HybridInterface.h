@@ -389,7 +389,10 @@ public:                                                                   \
         return getHalVariant().index();                                   \
     }                                                                     \
     constexpr uint32_t I##INTERFACE::sGetHalTokenTransactionCode;         \
-    const ::android::String16 I##INTERFACE::descriptor(NAME);             \
+    static const ::android::StaticString16 I##INTERFACE##_desc_str16(     \
+        u##NAME);                                                         \
+    const ::android::String16 I##INTERFACE::descriptor(                   \
+        I##INTERFACE##_desc_str16);                                       \
     const ::android::String16&                                            \
             I##INTERFACE::getInterfaceDescriptor() const {                \
         return I##INTERFACE::descriptor;                                  \
