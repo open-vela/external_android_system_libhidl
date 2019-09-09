@@ -336,10 +336,8 @@ template<typename T>
 struct hidl_vec {
     using value_type = T;
 
-    hidl_vec() : mBuffer(nullptr), mSize(0), mOwnsBuffer(true) {
+    hidl_vec() : mBuffer(nullptr), mSize(0), mOwnsBuffer(false) {
         static_assert(hidl_vec<T>::kOffsetOfBuffer == 0, "wrong offset");
-
-        // mOwnsBuffer true to match original implementation
 
         memset(mPad, 0, sizeof(mPad));
     }
