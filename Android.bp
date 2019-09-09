@@ -44,12 +44,15 @@ cc_test {
     shared_libs: [
         "android.hidl.memory@1.0",
         "libbase",
-        "libhidlbase",
-        "liblog",
         "libutils",
         "libcutils",
+        "libvndksupport",
     ],
-    static_libs: ["libgtest", "libgmock"],
+    static_libs: [
+        "libhidlbase",
+        "libgtest",
+        "libgmock"
+    ],
 
     cflags: [
         "-O0",
