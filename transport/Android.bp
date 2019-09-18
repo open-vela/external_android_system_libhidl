@@ -24,21 +24,28 @@ cc_defaults {
         "libutils",
         "libhwbinder",
         "libcutils",
-        "libvndksupport"
     ],
     export_shared_lib_headers: [
         "libutils",
     ],
 
     target: {
+        android: {
+            shared_libs: [
+                "libvndksupport",
+            ],
+        },
         recovery: {
-            exclude_shared_libs: ["libvndksupport"],
+            exclude_shared_libs: [
+                "libvndksupport",
+            ],
         },
     },
 }
 
 cc_library_static {
     name: "libhidltransport-impl-internal",
+    host_supported: true,
     vendor_available: true,
     recovery_available: true,
 
