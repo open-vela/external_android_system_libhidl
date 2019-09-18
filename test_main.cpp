@@ -33,6 +33,12 @@
 #include <fstream>
 #include <vector>
 
+#ifdef __ANDROID__
+static bool kAndroid = true;
+#else
+static bool kAndroid = false;
+#endif
+
 #define EXPECT_ARRAYEQ(__a1__, __a2__, __size__) EXPECT_TRUE(isArrayEqual(__a1__, __a2__, __size__))
 #define EXPECT_2DARRAYEQ(__a1__, __a2__, __size1__, __size2__) \
         EXPECT_TRUE(is2dArrayEqual(__a1__, __a2__, __size1__, __size2__))
@@ -563,6 +569,10 @@ TEST_F(LibHidlTest, StatusStringTest) {
 }
 
 TEST_F(LibHidlTest, PreloadTest) {
+    // HIDL doesn't have support to load passthrough implementations on host, but we
+    // could do this by loading implementations from the output directory
+    if (!kAndroid) GTEST_SKIP();
+
     using ::android::hardware::preloadPassthroughService;
     using ::android::hidl::memory::V1_0::IMemory;
 
