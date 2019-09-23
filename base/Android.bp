@@ -28,8 +28,9 @@ cc_defaults {
 
 cc_library {
     name: "libhidlbase-impl-internal",
-    vendor_available: true,
+    host_supported: true,
     recovery_available: true,
+    vendor_available: true,
     defaults: [
         "libhidlbase-impl-shared-libs",
         "libhidl-defaults"

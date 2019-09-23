@@ -36,6 +36,7 @@ cc_library_headers {
 
 cc_test {
     name: "libhidl_test",
+    host_supported: true,
     defaults: ["libhidl-defaults"],
     gtest: false,
     srcs: ["test_main.cpp"],
@@ -75,6 +76,7 @@ cc_defaults {
 cc_library {
     name: "libhidlbase",
     defaults: ["libhidlbase-combined-impl"],
+    host_supported: true,
     recovery_available: true,
     vendor_available: true,
     vndk: {
