@@ -22,11 +22,13 @@ cc_defaults {
         "libbase",
         "liblog",
         "libutils",
-        "libhwbinder",
         "libcutils",
     ],
     export_shared_lib_headers: [
         "libutils",
+    ],
+    static_libs: [
+        "libhwbinder-impl-internal",
     ],
 
     target: {
