@@ -111,8 +111,4 @@ cc_library {
 cc_library {
     name: "libhidltransport",
     vendor_available: true,
-    vndk: {
-        enabled: true,
-        support_system_process: true,
-    },
 }
