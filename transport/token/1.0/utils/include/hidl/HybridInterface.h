@@ -560,6 +560,6 @@ HpInterface<BPINTERFACE, CONVERTER, CONVERTERS...>::HpInterface(
 
 // ----------------------------------------------------------------------
 
-}; // namespace android
+}  // namespace android
 
 #endif // ANDROID_HYBRIDINTERFACE_H
