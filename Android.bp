@@ -110,7 +110,6 @@ cc_library {
 // on libhidlbase instead.
 cc_library {
     name: "libhidltransport",
-    recovery_available: true,
     vendor_available: true,
     vndk: {
         enabled: true,
