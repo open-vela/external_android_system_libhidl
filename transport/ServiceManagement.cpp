@@ -382,13 +382,6 @@ struct PassthroughServiceManager : IServiceManager1_1 {
             } else if (!eachLib(handle, "SELF", sym)) {
                 return;
             }
-
-            const char* vtsRootPath = std::getenv("VTS_ROOT_PATH");
-            if (vtsRootPath && strlen(vtsRootPath) > 0) {
-                const std::string halLibraryPathVtsOverride =
-                    std::string(vtsRootPath) + HAL_LIBRARY_PATH_SYSTEM;
-                paths.insert(paths.begin(), halLibraryPathVtsOverride);
-            }
         }
 #endif
 
