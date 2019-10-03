@@ -803,6 +803,7 @@ sp<::android::hidl::base::V1_0::IBase> getRawServiceInternal(const std::string& 
               "enable PRODUCT_ENFORCE_VINTF_MANIFEST on this device (this is also enabled by "
               "PRODUCT_FULL_TREBLE). PRODUCT_ENFORCE_VINTF_MANIFEST will ensure that no race "
               "condition is possible here.");
+        sleep(1);
     }
 
     for (int tries = 0; !getStub && (vintfHwbinder || vintfLegacy); tries++) {
