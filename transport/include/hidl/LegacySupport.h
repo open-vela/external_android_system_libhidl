@@ -26,12 +26,9 @@
 namespace android {
 namespace hardware {
 namespace details {
-template <typename Interface>
-using RegisterServiceCb = std::function<status_t(const sp<Interface>&, const std::string&)>;
-
-template <class Interface, class ExpectInterface = Interface>
+template <class Interface, typename Func>
 __attribute__((warn_unused_result)) status_t registerPassthroughServiceImplementation(
-        RegisterServiceCb<Interface> registerServiceCb, const std::string& name = "default") {
+    Func registerServiceCb, const std::string& name = "default") {
     sp<Interface> service = Interface::getService(name, true /* getStub */);
 
     if (service == nullptr) {
@@ -42,9 +39,6 @@ __attribute__((warn_unused_result)) status_t registerPassthroughServiceImplement
 
     LOG_FATAL_IF(service->isRemote(), "Implementation of %s/%s is remote!",
             Interface::descriptor, name.c_str());
-    LOG_FATAL_IF(ExpectInterface::castFrom(service) == nullptr,
-                 "Implementation of %s/%s is not a %s!", Interface::descriptor, name.c_str(),
-                 ExpectInterface::descriptor);
 
     status_t status = registerServiceCb(service, name);
 
@@ -63,14 +57,14 @@ __attribute__((warn_unused_result)) status_t registerPassthroughServiceImplement
 /**
  * Registers passthrough service implementation.
  */
-template <class Interface, class ExpectInterface = Interface>
+template <class Interface>
 __attribute__((warn_unused_result)) status_t registerPassthroughServiceImplementation(
-        const std::string& name = "default") {
-    return details::registerPassthroughServiceImplementation<Interface, ExpectInterface>(
-            [](const sp<Interface>& service, const std::string& name) {
-                return service->registerAsService(name);
-            },
-            name);
+    const std::string& name = "default") {
+    return details::registerPassthroughServiceImplementation<Interface>(
+        [](const sp<Interface>& service, const std::string& name) {
+            return service->registerAsService(name);
+        },
+        name);
 }
 
 /**
@@ -78,11 +72,11 @@ __attribute__((warn_unused_result)) status_t registerPassthroughServiceImplement
  *
  * Return value is exit status.
  */
-template <class Interface, class ExpectInterface = Interface>
+template <class Interface>
 __attribute__((warn_unused_result)) status_t defaultPassthroughServiceImplementation(
-        const std::string& name, size_t maxThreads = 1) {
+    const std::string& name, size_t maxThreads = 1) {
     configureRpcThreadpool(maxThreads, true);
-    status_t result = registerPassthroughServiceImplementation<Interface, ExpectInterface>(name);
+    status_t result = registerPassthroughServiceImplementation<Interface>(name);
 
     if (result != OK) {
         return result;
@@ -91,11 +85,10 @@ __attribute__((warn_unused_result)) status_t defaultPassthroughServiceImplementa
     joinRpcThreadpool();
     return UNKNOWN_ERROR;
 }
-template <class Interface, class ExpectInterface = Interface>
-__attribute__((warn_unused_result)) status_t defaultPassthroughServiceImplementation(
-        size_t maxThreads = 1) {
-    return defaultPassthroughServiceImplementation<Interface, ExpectInterface>("default",
-                                                                               maxThreads);
+template<class Interface>
+__attribute__((warn_unused_result))
+status_t defaultPassthroughServiceImplementation(size_t maxThreads = 1) {
+    return defaultPassthroughServiceImplementation<Interface>("default", maxThreads);
 }
 
 /**
@@ -106,10 +99,10 @@ __attribute__((warn_unused_result)) status_t defaultPassthroughServiceImplementa
  * through registerPassthroughServiceImplementation, so if that function is used in conjunction with
  * this one, the process may exit while a client is still using the HAL.
  */
-template <class Interface, class ExpectInterface = Interface>
+template <class Interface>
 __attribute__((warn_unused_result)) status_t registerLazyPassthroughServiceImplementation(
-        const std::string& name = "default") {
-    return details::registerPassthroughServiceImplementation<Interface, ExpectInterface>(
+    const std::string& name = "default") {
+    return details::registerPassthroughServiceImplementation<Interface>(
             [](const sp<Interface>& service, const std::string& name) {
                 using android::hardware::LazyServiceRegistrar;
                 return LazyServiceRegistrar::getInstance().registerService(service, name);
@@ -123,12 +116,11 @@ __attribute__((warn_unused_result)) status_t registerLazyPassthroughServiceImple
  *
  * Return value is exit status.
  */
-template <class Interface, class ExpectInterface = Interface>
+template <class Interface>
 __attribute__((warn_unused_result)) status_t defaultLazyPassthroughServiceImplementation(
-        const std::string& name, size_t maxThreads = 1) {
+    const std::string& name, size_t maxThreads = 1) {
     configureRpcThreadpool(maxThreads, true);
-    status_t result =
-            registerLazyPassthroughServiceImplementation<Interface, ExpectInterface>(name);
+    status_t result = registerLazyPassthroughServiceImplementation<Interface>(name);
 
     if (result != OK) {
         return result;
@@ -137,11 +129,10 @@ __attribute__((warn_unused_result)) status_t defaultLazyPassthroughServiceImplem
     joinRpcThreadpool();
     return UNKNOWN_ERROR;
 }
-template <class Interface, class ExpectInterface = Interface>
+template <class Interface>
 __attribute__((warn_unused_result)) status_t defaultLazyPassthroughServiceImplementation(
-        size_t maxThreads = 1) {
-    return defaultLazyPassthroughServiceImplementation<Interface, ExpectInterface>("default",
-                                                                                   maxThreads);
+    size_t maxThreads = 1) {
+    return defaultLazyPassthroughServiceImplementation<Interface>("default", maxThreads);
 }
 
 }  // namespace hardware
