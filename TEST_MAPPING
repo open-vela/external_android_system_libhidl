@@ -2,9 +2,6 @@
   "presubmit": [
     {
       "name": "libhidl_test"
-    },
-    {
-      "name": "hidl_implementation_test"
     }
   ]
 }
