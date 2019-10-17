@@ -42,9 +42,10 @@ __attribute__((warn_unused_result)) status_t registerPassthroughServiceImplement
 
     LOG_FATAL_IF(service->isRemote(), "Implementation of %s/%s is remote!",
             Interface::descriptor, name.c_str());
-    LOG_FATAL_IF(ExpectInterface::castFrom(service) == nullptr,
-                 "Implementation of %s/%s is not a %s!", Interface::descriptor, name.c_str(),
-                 ExpectInterface::descriptor);
+
+    sp<ExpectInterface> expected = ExpectInterface::castFrom(service);
+    LOG_FATAL_IF(expected == nullptr, "Implementation of %s/%s is not a %s!", Interface::descriptor,
+                 name.c_str(), ExpectInterface::descriptor);
 
     status_t status = registerServiceCb(service, name);
 
