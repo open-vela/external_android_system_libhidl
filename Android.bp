@@ -111,4 +111,9 @@ cc_library {
 cc_library {
     name: "libhidltransport",
     vendor_available: true,
+
+    visibility: [
+        "//device:__subpackages__",
+        "//vendor:__subpackages__",
+    ],
 }
