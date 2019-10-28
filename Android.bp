@@ -113,7 +113,6 @@ cc_library {
     vendor_available: true,
 
     visibility: [
-        "//device:__subpackages__",
         "//vendor:__subpackages__",
     ],
 }
