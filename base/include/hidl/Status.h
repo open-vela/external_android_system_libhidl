@@ -141,6 +141,11 @@ namespace details {
         Status mStatus {};
         mutable bool mCheckedStatus = false;
 
+        // called when an unchecked status is discarded
+        // makes sure this status is checked according to the preference
+        // set by setProcessHidlReturnRestriction
+        void onIgnored() const;
+
         template <typename T, typename U>
         friend Return<U> StatusOf(const Return<T> &other);
     protected:

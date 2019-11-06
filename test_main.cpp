@@ -546,6 +546,36 @@ TEST_F(LibHidlTest, ReturnDies) {
             "");
 }
 
+TEST_F(LibHidlTest, DetectUncheckedReturn) {
+    using ::android::hardware::HidlReturnRestriction;
+    using ::android::hardware::Return;
+    using ::android::hardware::setProcessHidlReturnRestriction;
+    using ::android::hardware::Status;
+
+    setProcessHidlReturnRestriction(HidlReturnRestriction::FATAL_IF_UNCHECKED);
+
+    EXPECT_DEATH(
+            {
+                auto ret = Return<void>(Status::ok());
+                (void)ret;
+            },
+            "");
+    EXPECT_DEATH(
+            {
+                auto ret = Return<void>(Status::ok());
+                ret = Return<void>(Status::ok());
+                ret.isOk();
+            },
+            "");
+
+    auto ret = Return<void>(Status::ok());
+    (void)ret.isOk();
+    ret = Return<void>(Status::ok());
+    (void)ret.isOk();
+
+    setProcessHidlReturnRestriction(HidlReturnRestriction::NONE);
+}
+
 std::string toString(const ::android::hardware::Status &s) {
     using ::android::hardware::operator<<;
     std::ostringstream oss;
