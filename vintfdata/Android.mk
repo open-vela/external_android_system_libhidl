@@ -46,7 +46,7 @@ DEVICE_MATRIX_INPUT_FILE := $(LOCAL_PATH)/device_compatibility_matrix.default.xm
 endif
 
 include $(CLEAR_VARS)
-LOCAL_MODULE        := device_compatibility_matrix.xml
+LOCAL_MODULE        := vendor_compatibility_matrix.xml
 LOCAL_MODULE_STEM   := compatibility_matrix.xml
 LOCAL_MODULE_CLASS  := ETC
 LOCAL_MODULE_PATH   := $(TARGET_OUT_VENDOR)/etc/vintf
