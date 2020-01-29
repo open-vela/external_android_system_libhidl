@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#include <string>
+
 #include <hidl/HidlLazyUtils.h>
 #include <hidl/HidlTransportSupport.h>
 #include <sys/wait.h>
@@ -59,6 +61,13 @@ __attribute__((warn_unused_result)) status_t registerPassthroughServiceImplement
 
     return status;
 }
+
+using RegisterServiceBaseCb = RegisterServiceCb<::android::hidl::base::V1_0::IBase>;
+
+__attribute__((warn_unused_result)) status_t registerPassthroughServiceImplementation(
+        const std::string& interfaceName, RegisterServiceBaseCb registerServiceCb,
+        const std::string& serviceName = "default");
+
 }  // namespace details
 
 /**
@@ -73,6 +82,9 @@ __attribute__((warn_unused_result)) status_t registerPassthroughServiceImplement
             },
             name);
 }
+
+__attribute__((warn_unused_result)) status_t registerPassthroughServiceImplementation(
+        const std::string& interfaceName, const std::string& serviceName = "default");
 
 /**
  * Creates default passthrough service implementation. This method never returns.
