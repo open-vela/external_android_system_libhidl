@@ -91,6 +91,7 @@ cc_library_static {
         "HidlPassthroughSupport.cpp",
         "HidlTransportSupport.cpp",
         "HidlTransportUtils.cpp",
+        "LegacySupport.cpp",
         "ServiceManagement.cpp",
         "Static.cpp"
     ],
