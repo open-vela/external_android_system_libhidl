@@ -29,8 +29,8 @@ namespace android::hardware {
 namespace details {
 
 __attribute__((warn_unused_result)) status_t registerPassthroughServiceImplementation(
-        const std::string& interfaceName, RegisterServiceBaseCb registerServiceCb,
-        const std::string& serviceName) {
+        const std::string& interfaceName, const std::string& expectInterfaceName,
+        RegisterServiceCb registerServiceCb, const std::string& serviceName) {
     sp<IBase> service =
             getRawServiceInternal(interfaceName, serviceName, true /*retry*/, true /*getStub*/);
 
@@ -39,20 +39,26 @@ __attribute__((warn_unused_result)) status_t registerPassthroughServiceImplement
               serviceName.c_str());
         return EXIT_FAILURE;
     }
-
-    LOG_FATAL_IF(service->isRemote(), "Implementation of %s/%s is remote!", interfaceName.c_str(),
-                 serviceName.c_str());
+    if (service->isRemote()) {
+        ALOGE("Implementation of %s/%s is remote!", interfaceName.c_str(), serviceName.c_str());
+        return EXIT_FAILURE;
+    }
 
     std::string actualName;
     Return<void> result = service->interfaceDescriptor(
             [&actualName](const hidl_string& descriptor) { actualName = descriptor; });
-    LOG_FATAL_IF(!result.isOk(), "Error retrieving interface name from %s/%s: %s",
-                 interfaceName.c_str(), serviceName.c_str(), result.description());
-    LOG_FATAL_IF(actualName != interfaceName, "Implementation of %s/%s is actually %s!",
-                 interfaceName.c_str(), serviceName.c_str(), actualName.c_str());
+    if (!result.isOk()) {
+        ALOGE("Error retrieving interface name from %s/%s: %s", interfaceName.c_str(),
+              serviceName.c_str(), result.description().c_str());
+        return EXIT_FAILURE;
+    }
+    if (actualName != expectInterfaceName) {
+        ALOGE("Implementation of %s/%s is actually %s, not a %s!", interfaceName.c_str(),
+              serviceName.c_str(), actualName.c_str(), expectInterfaceName.c_str());
+        return EXIT_FAILURE;
+    }
 
     status_t status = registerServiceCb(service, serviceName);
-
     if (status == OK) {
         ALOGI("Registration complete for %s/%s.", interfaceName.c_str(), serviceName.c_str());
     } else {
@@ -66,9 +72,10 @@ __attribute__((warn_unused_result)) status_t registerPassthroughServiceImplement
 }  // namespace details
 
 __attribute__((warn_unused_result)) status_t registerPassthroughServiceImplementation(
-        const std::string& interfaceName, const std::string& serviceName) {
+        const std::string& interfaceName, const std::string& expectInterfaceName,
+        const std::string& serviceName) {
     return details::registerPassthroughServiceImplementation(
-            interfaceName,
+            interfaceName, expectInterfaceName,
             [](const sp<IBase>& service, const std::string& name) {
                 return details::registerAsServiceInternal(service, name);
             },

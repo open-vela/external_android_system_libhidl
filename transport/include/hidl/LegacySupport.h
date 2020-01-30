@@ -28,63 +28,34 @@
 namespace android {
 namespace hardware {
 namespace details {
-template <typename Interface>
-using RegisterServiceCb = std::function<status_t(const sp<Interface>&, const std::string&)>;
 
-template <class Interface, class ExpectInterface = Interface>
-__attribute__((warn_unused_result)) status_t registerPassthroughServiceImplementation(
-        RegisterServiceCb<Interface> registerServiceCb, const std::string& name = "default") {
-    sp<Interface> service = Interface::getService(name, true /* getStub */);
-
-    if (service == nullptr) {
-        ALOGE("Could not get passthrough implementation for %s/%s.",
-            Interface::descriptor, name.c_str());
-        return EXIT_FAILURE;
-    }
-
-    LOG_FATAL_IF(service->isRemote(), "Implementation of %s/%s is remote!",
-            Interface::descriptor, name.c_str());
-
-    sp<ExpectInterface> expected = ExpectInterface::castFrom(service);
-    LOG_FATAL_IF(expected == nullptr, "Implementation of %s/%s is not a %s!", Interface::descriptor,
-                 name.c_str(), ExpectInterface::descriptor);
-
-    status_t status = registerServiceCb(service, name);
-
-    if (status == OK) {
-        ALOGI("Registration complete for %s/%s.",
-            Interface::descriptor, name.c_str());
-    } else {
-        ALOGE("Could not register service %s/%s (%d).",
-            Interface::descriptor, name.c_str(), status);
-    }
-
-    return status;
-}
-
-using RegisterServiceBaseCb = RegisterServiceCb<::android::hidl::base::V1_0::IBase>;
+using RegisterServiceCb =
+        std::function<status_t(const sp<::android::hidl::base::V1_0::IBase>&, const std::string&)>;
 
 __attribute__((warn_unused_result)) status_t registerPassthroughServiceImplementation(
-        const std::string& interfaceName, RegisterServiceBaseCb registerServiceCb,
-        const std::string& serviceName = "default");
+        const std::string& interfaceName, const std::string& expectInterfaceName,
+        RegisterServiceCb registerServiceCb, const std::string& serviceName = "default");
 
 }  // namespace details
 
 /**
  * Registers passthrough service implementation.
  */
+__attribute__((warn_unused_result)) status_t registerPassthroughServiceImplementation(
+        const std::string& interfaceName, const std::string& expectInterfaceName,
+        const std::string& serviceName);
+
+inline __attribute__((warn_unused_result)) status_t registerPassthroughServiceImplementation(
+        const std::string& interfaceName, const std::string& serviceName = "default") {
+    return registerPassthroughServiceImplementation(interfaceName, interfaceName, serviceName);
+}
+
 template <class Interface, class ExpectInterface = Interface>
 __attribute__((warn_unused_result)) status_t registerPassthroughServiceImplementation(
         const std::string& name = "default") {
-    return details::registerPassthroughServiceImplementation<Interface, ExpectInterface>(
-            [](const sp<Interface>& service, const std::string& name) {
-                return service->registerAsService(name);
-            },
-            name);
+    return registerPassthroughServiceImplementation(Interface::descriptor,
+                                                    ExpectInterface::descriptor, name);
 }
-
-__attribute__((warn_unused_result)) status_t registerPassthroughServiceImplementation(
-        const std::string& interfaceName, const std::string& serviceName = "default");
 
 /**
  * Creates default passthrough service implementation. This method never returns.
@@ -122,8 +93,9 @@ __attribute__((warn_unused_result)) status_t defaultPassthroughServiceImplementa
 template <class Interface, class ExpectInterface = Interface>
 __attribute__((warn_unused_result)) status_t registerLazyPassthroughServiceImplementation(
         const std::string& name = "default") {
-    return details::registerPassthroughServiceImplementation<Interface, ExpectInterface>(
-            [](const sp<Interface>& service, const std::string& name) {
+    return details::registerPassthroughServiceImplementation(
+            Interface::descriptor, ExpectInterface::descriptor,
+            [](const sp<::android::hidl::base::V1_0::IBase>& service, const std::string& name) {
                 using android::hardware::LazyServiceRegistrar;
                 return LazyServiceRegistrar::getInstance().registerService(service, name);
             },
