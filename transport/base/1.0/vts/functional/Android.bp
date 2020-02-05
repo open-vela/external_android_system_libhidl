@@ -32,4 +32,8 @@ cc_test {
     static_libs: [
         "libinit_test_utils",
     ],
+    test_suites: [
+        "vts-core",
+    ],
+    require_root: true,
 }
