@@ -36,4 +36,5 @@ cc_test {
         "vts-core",
     ],
     require_root: true,
+    auto_gen_config: true,
 }
