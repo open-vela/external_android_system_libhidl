@@ -232,9 +232,11 @@ TEST_F(VtsHalBaseV1_0TargetTest, HashChain) {
 }
 
 TEST_F(VtsHalBaseV1_0TargetTest, ServiceProvidesAndDeclaresTheSameInterfaces) {
-    Result<ServiceInterfacesMap> service_interfaces_map =
+    const Result<ServiceInterfacesMap> service_interfaces_map =
             android::init::GetOnDeviceServiceInterfacesMap();
     ASSERT_TRUE(service_interfaces_map) << service_interfaces_map.error();
+
+    std::map<std::string, std::set<FqInstance>> hidl_interfaces_map;
 
     // Attempt to get handles to all known declared interfaces. This will cause
     // any non-running lazy HALs to start up.
@@ -243,8 +245,17 @@ TEST_F(VtsHalBaseV1_0TargetTest, ServiceProvidesAndDeclaresTheSameInterfaces) {
         if (declared_interfaces.empty()) {
             LOG(INFO) << "Service '" << service << "' does not declare any interfaces.";
         }
-        for (const auto& instance : declared_interfaces) {
-            std::thread(GetHal, service, instance).detach();
+        for (const auto& interface : declared_interfaces) {
+            if (interface.find("aidl/") == 0) {
+                LOG(INFO) << "Not testing '" << service << "' AIDL interface: " << interface;
+            } else {
+                FqInstance fqInstance;
+                ASSERT_TRUE(fqInstance.setTo(interface))
+                        << "Unable to parse interface: '" << interface << "'";
+
+                std::thread(GetHal, service, fqInstance).detach();
+                hidl_interfaces_map[service].insert(fqInstance);
+            }
         }
     }
     // Allow the threads 5 seconds to attempt to get each HAL. Any HAL whose
@@ -269,8 +280,8 @@ TEST_F(VtsHalBaseV1_0TargetTest, ServiceProvidesAndDeclaresTheSameInterfaces) {
         // Warn for any threads that were stuck when attempting to retrieve a
         // HAL.
         std::vector<FqInstance> missing_declared_interfaces;
-        std::set_difference((*service_interfaces_map)[service].begin(),
-                            (*service_interfaces_map)[service].end(), declared_interfaces.begin(),
+        std::set_difference(hidl_interfaces_map[service].begin(),
+                            hidl_interfaces_map[service].end(), declared_interfaces.begin(),
                             declared_interfaces.end(),
                             std::back_inserter(missing_declared_interfaces));
         if (!missing_declared_interfaces.empty()) {
