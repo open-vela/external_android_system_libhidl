@@ -18,9 +18,9 @@
 
 #include <hidl/HidlBinderSupport.h>
 
-#include <InternalStatic.h>  // TODO(b/69122224): remove this include, for getOrCreateCachedBinder
 #include <android/hidl/base/1.0/BpHwBase.h>
 #include <hwbinder/IPCThreadState.h>
+#include "InternalStatic.h"  // TODO(b/69122224): remove this include, for getOrCreateCachedBinder
 
 // C includes
 #include <inttypes.h>
