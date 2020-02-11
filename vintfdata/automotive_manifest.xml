@@ -4,7 +4,7 @@
         <transport>hwbinder</transport>
         <version>1.0</version>
         <interface>
-            <name>ICarWindowService</name>
+            <name>IAutomotiveDisplayProxyService</name>
             <instance>default</instance>
         </interface>
     </hal>
