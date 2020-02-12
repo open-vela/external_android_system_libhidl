@@ -234,7 +234,7 @@ TEST_F(VtsHalBaseV1_0TargetTest, HashChain) {
 TEST_F(VtsHalBaseV1_0TargetTest, ServiceProvidesAndDeclaresTheSameInterfaces) {
     const Result<ServiceInterfacesMap> service_interfaces_map =
             android::init::GetOnDeviceServiceInterfacesMap();
-    ASSERT_TRUE(service_interfaces_map) << service_interfaces_map.error();
+    ASSERT_RESULT_OK(service_interfaces_map);
 
     std::map<std::string, std::set<FqInstance>> hidl_interfaces_map;
 
