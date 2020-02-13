@@ -19,6 +19,11 @@ cc_library {
         enabled: true,
         support_system_process: true,
     },
+    apex_available: [
+        "//apex_available:platform",
+        "com.android.neuralnetworks",
+        "test_com.android.neuralnetworks",
+    ],
     defaults: ["libhidl-defaults"],
     shared_libs: [
         "libbase",

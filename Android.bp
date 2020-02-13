@@ -67,6 +67,15 @@ cc_library {
     host_supported: true,
     recovery_available: true,
     vendor_available: true,
+    apex_available: [
+        // TODO(b/137948090): not fully supported in APEX for certain usecases
+        // - large dependency sizes
+        // - VINTF manifest cannot be read from APEX
+        // - no testing story/infra for deprecation schedule
+        "//apex_available:platform",
+        "com.android.neuralnetworks",
+        "test_com.android.neuralnetworks",
+    ],
     vndk: {
         enabled: true,
         support_system_process: true,
