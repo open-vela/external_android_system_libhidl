@@ -1044,6 +1044,9 @@ constexpr hidl_invalid_type<T> hidl_enum_values;
  */
 template <typename T, typename = std::enable_if_t<std::is_enum<T>::value>>
 struct hidl_enum_range {
+    // Container-like associated type.
+    using value_type = T;
+
     constexpr auto begin() const { return std::begin(details::hidl_enum_values<T>); }
     constexpr auto cbegin() const { return begin(); }
     constexpr auto rbegin() const { return std::rbegin(details::hidl_enum_values<T>); }
