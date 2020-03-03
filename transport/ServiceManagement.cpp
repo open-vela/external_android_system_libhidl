@@ -54,10 +54,6 @@
 #include <android/hidl/manager/1.2/BpHwServiceManager.h>
 #include <android/hidl/manager/1.2/IServiceManager.h>
 
-#define RE_COMPONENT    "[a-zA-Z_][a-zA-Z_0-9]*"
-#define RE_PATH         RE_COMPONENT "(?:[.]" RE_COMPONENT ")*"
-static const std::regex gLibraryFileNamePattern("(" RE_PATH "@[0-9]+[.][0-9]+)-impl(.*?).so");
-
 using ::android::hidl::base::V1_0::IBase;
 using IServiceManager1_0 = android::hidl::manager::V1_0::IServiceManager;
 using IServiceManager1_1 = android::hidl::manager::V1_1::IServiceManager;
@@ -263,7 +259,14 @@ static std::vector<std::string> findFiles(const std::string& path, const std::st
     return results;
 }
 
-bool matchPackageName(const std::string& lib, std::string* matchedName, std::string* implName) {
+static bool matchPackageName(const std::string& lib, std::string* matchedName,
+                             std::string* implName) {
+#define RE_COMPONENT "[a-zA-Z_][a-zA-Z_0-9]*"
+#define RE_PATH RE_COMPONENT "(?:[.]" RE_COMPONENT ")*"
+    static const std::regex gLibraryFileNamePattern("(" RE_PATH "@[0-9]+[.][0-9]+)-impl(.*?).so");
+#undef RE_PATH
+#undef RE_COMPONENT
+
     std::smatch match;
     if (std::regex_match(lib, match, gLibraryFileNamePattern)) {
         *matchedName = match.str(1) + "::I*";
