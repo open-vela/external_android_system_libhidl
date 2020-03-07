@@ -40,7 +40,3 @@ cc_test {
     require_root: true,
     auto_gen_config: true,
 }
-
-vts_config {
-    name: "VtsHalBaseV1_0TargetTest",
-}
