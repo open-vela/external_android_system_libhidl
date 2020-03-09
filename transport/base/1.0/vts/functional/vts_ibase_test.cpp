@@ -82,7 +82,7 @@ std::map<std::string, std::vector<Hal>> gDeclaredServiceHalMap;
 std::mutex gDeclaredServiceHalMapMutex;
 
 void GetHal(const std::string& service, const FqInstance& instance) {
-    if (instance.getFqName() == android::gIBaseFqName) {
+    if (instance.getFqName().string() == IBase::descriptor) {
         return;
     }
 
@@ -157,7 +157,7 @@ class VtsHalBaseV1_0TargetTest : public ::testing::Test {
                             << "Unable to parse interface: '" << debug_info.interfaceName.c_str();
                     FqInstance fqInstance;
                     ASSERT_TRUE(fqInstance.setTo(fqName, debug_info.instanceName.c_str()));
-                    if (fqInstance.getFqName() != android::gIBaseFqName) {
+                    if (fqInstance.getFqName().string() != IBase::descriptor) {
                         result[debug_info.pid].insert(fqInstance);
                     }
                 }
