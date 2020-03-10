@@ -216,8 +216,7 @@ sp<IType> fromBinder(const sp<IBinder>& binderIface) {
     sp<IBase> base = static_cast<BnHwBase*>(binderIface.get())->getImpl();
 
     if (details::canCastInterface(base.get(), IType::descriptor)) {
-        StubType* stub = static_cast<StubType*>(binderIface.get());
-        return stub->getImpl();
+        return static_cast<IType*>(base.get());
     } else {
         return nullptr;
     }
