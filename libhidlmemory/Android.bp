@@ -23,6 +23,8 @@ cc_library {
         "//apex_available:platform",
         "com.android.neuralnetworks",
         "test_com.android.neuralnetworks",
+        "com.android.media",
+        "com.android.media.swcodec",
     ],
     defaults: ["libhidl-defaults"],
     shared_libs: [
