@@ -92,6 +92,7 @@ include $(CLEAR_VARS)
 LOCAL_MODULE := product_manifest.xml
 LOCAL_MODULE_STEM := manifest.xml
 LOCAL_MODULE_CLASS := ETC
+LOCAL_PRODUCT_MODULE := true
 LOCAL_MODULE_RELATIVE_PATH := vintf
 GEN := $(local-generated-sources-dir)/manifest.xml
 $(GEN): PRIVATE_PRODUCT_MANIFEST_FILES := $(PRODUCT_MANIFEST_FILES)
