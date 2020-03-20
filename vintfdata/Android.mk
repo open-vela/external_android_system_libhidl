@@ -27,6 +27,10 @@ ifdef DEVICE_FRAMEWORK_MANIFEST_FILE
   FRAMEWORK_MANIFEST_INPUT_FILES += $(DEVICE_FRAMEWORK_MANIFEST_FILE)
 endif
 
+ifeq ($(BOARD_IS_AUTOMOTIVE), true)
+  FRAMEWORK_MANIFEST_INPUT_FILES += $(LOCAL_PATH)/automotive_manifest.xml
+endif
+
 # VNDK Version in device compatibility matrix and framework manifest
 ifeq ($(BOARD_VNDK_VERSION),current)
 VINTF_VNDK_VERSION := $(PLATFORM_VNDK_VERSION)
@@ -88,6 +92,7 @@ include $(CLEAR_VARS)
 LOCAL_MODULE := product_manifest.xml
 LOCAL_MODULE_STEM := manifest.xml
 LOCAL_MODULE_CLASS := ETC
+LOCAL_PRODUCT_MODULE := true
 LOCAL_MODULE_RELATIVE_PATH := vintf
 GEN := $(local-generated-sources-dir)/manifest.xml
 $(GEN): PRIVATE_PRODUCT_MANIFEST_FILES := $(PRODUCT_MANIFEST_FILES)
