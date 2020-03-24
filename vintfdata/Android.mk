@@ -27,10 +27,6 @@ ifdef DEVICE_FRAMEWORK_MANIFEST_FILE
   FRAMEWORK_MANIFEST_INPUT_FILES += $(DEVICE_FRAMEWORK_MANIFEST_FILE)
 endif
 
-ifeq ($(BOARD_IS_AUTOMOTIVE), true)
-  FRAMEWORK_MANIFEST_INPUT_FILES += $(LOCAL_PATH)/automotive_manifest.xml
-endif
-
 # VNDK Version in device compatibility matrix and framework manifest
 ifeq ($(BOARD_VNDK_VERSION),current)
 VINTF_VNDK_VERSION := $(PLATFORM_VNDK_VERSION)
@@ -99,6 +95,25 @@ $(GEN): PRIVATE_PRODUCT_MANIFEST_FILES := $(PRODUCT_MANIFEST_FILES)
 $(GEN): $(PRODUCT_MANIFEST_FILES) $(HOST_OUT_EXECUTABLES)/assemble_vintf
 	$(HOST_OUT_EXECUTABLES)/assemble_vintf \
 		-i $(call normalize-path-list,$(PRIVATE_PRODUCT_MANIFEST_FILES)) \
+		-o $@
+
+LOCAL_PREBUILT_MODULE_FILE := $(GEN)
+include $(BUILD_PREBUILT)
+endif
+
+# System_ext Manifest
+ifneq ($(SYSTEM_EXT_MANIFEST_FILES),)
+include $(CLEAR_VARS)
+LOCAL_MODULE := system_ext_manifest.xml
+LOCAL_MODULE_STEM := manifest.xml
+LOCAL_MODULE_CLASS := ETC
+LOCAL_SYSTEM_EXT_MODULE := true
+LOCAL_MODULE_RELATIVE_PATH := vintf
+GEN := $(local-generated-sources-dir)/manifest.xml
+$(GEN): PRIVATE_SYSTEM_EXT_MANIFEST_FILES := $(SYSTEM_EXT_MANIFEST_FILES)
+$(GEN): $(SYSTEM_EXT_MANIFEST_FILES) $(HOST_OUT_EXECUTABLES)/assemble_vintf
+	$(HOST_OUT_EXECUTABLES)/assemble_vintf \
+		-i $(call normalize-path-list,$(PRIVATE_SYSTEM_EXT_MANIFEST_FILES)) \
 		-o $@
 
 LOCAL_PREBUILT_MODULE_FILE := $(GEN)
