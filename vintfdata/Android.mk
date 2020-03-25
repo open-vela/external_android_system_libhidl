@@ -32,10 +32,6 @@ ifdef SYSTEM_EXT_MANIFEST_FILES
   SYSTEM_EXT_MANIFEST_INPUT_FILES += $(SYSTEM_EXT_MANIFEST_FILES)
 endif
 
-ifeq ($(BOARD_IS_AUTOMOTIVE), true)
-  FRAMEWORK_MANIFEST_INPUT_FILES += $(LOCAL_PATH)/automotive_manifest.xml
-endif
-
 # VNDK Version in device compatibility matrix and framework manifest
 ifeq ($(BOARD_VNDK_VERSION),current)
 VINTF_VNDK_VERSION := $(PLATFORM_VNDK_VERSION)
