@@ -412,7 +412,7 @@ struct hidl_vec {
     }
 
     T *releaseData() {
-        if (!mOwnsBuffer && mBuffer != nullptr) {
+        if (!mOwnsBuffer && mSize > 0) {
             resize(mSize);
         }
         mOwnsBuffer = false;
