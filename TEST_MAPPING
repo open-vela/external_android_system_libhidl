@@ -5,9 +5,6 @@
     },
     {
       "name": "hal_implementation_test"
-    },
-    {
-      "name": "hidl_lazy_test"
     }
   ]
 }
