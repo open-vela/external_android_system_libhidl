@@ -34,6 +34,7 @@ cc_test {
         "libinit_test_utils",
     ],
     test_suites: [
+        "general-tests",
         "vts-core",
     ],
     require_root: true,
