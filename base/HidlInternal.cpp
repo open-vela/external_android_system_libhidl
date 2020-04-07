@@ -51,17 +51,7 @@ void logAlwaysFatal(const char* message) {
 }
 
 std::string getVndkVersionStr() {
-    static std::string vndkVersion("0");
-    // "0" means the vndkVersion must be initialized with the property value.
-    // Otherwise, return the value.
-    if (vndkVersion == "0") {
-        vndkVersion = base::GetProperty("ro.vndk.version", "");
-        if (vndkVersion != "" && vndkVersion != "current") {
-            vndkVersion = "-" + vndkVersion;
-        } else {
-            vndkVersion = "";
-        }
-    }
+    static std::string vndkVersion = base::GetProperty("ro.vndk.version", "");
     return vndkVersion;
 }
 
