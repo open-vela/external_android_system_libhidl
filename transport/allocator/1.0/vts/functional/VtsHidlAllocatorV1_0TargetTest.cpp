@@ -14,12 +14,11 @@
  * limitations under the License.
  */
 
+#include <VtsHalHidlTargetTestBase.h>
+#include <VtsHalHidlTargetTestEnvBase.h>
 #include <android-base/logging.h>
 #include <android/hidl/allocator/1.0/IAllocator.h>
 #include <android/hidl/memory/1.0/IMemory.h>
-#include <gtest/gtest.h>
-#include <hidl/GtestPrinter.h>
-#include <hidl/ServiceManagement.h>
 #include <hidlmemory/mapping.h>
 
 using ::android::sp;
@@ -33,10 +32,20 @@ using ::android::hidl::memory::V1_0::IMemory;
 #define ASSERT_OK(ret) ASSERT_TRUE((ret).isOk())
 #define EXPECT_OK(ret) EXPECT_TRUE((ret).isOk())
 
-class AllocatorHidlTest : public ::testing::TestWithParam<std::string> {
-  public:
+class AllocatorEnvironment : public ::testing::VtsHalHidlTargetTestEnvBase {
+   public:
+    virtual void registerTestServices() override { registerTestService<IAllocator>(); }
+
+    static AllocatorEnvironment* instance() {
+        static AllocatorEnvironment* instance = new AllocatorEnvironment();
+        return instance;
+    };
+};
+
+class AllocatorHidlTest : public ::testing::VtsHalHidlTargetTestBase {
+   public:
     virtual void SetUp() override {
-        allocator = IAllocator::getService(GetParam());
+        allocator = getService<IAllocator>(AllocatorEnvironment::instance());
         ASSERT_NE(allocator, nullptr);
     }
 
@@ -79,13 +88,13 @@ class AllocatorHidlTest : public ::testing::TestWithParam<std::string> {
     sp<IAllocator> allocator;
 };
 
-TEST_P(AllocatorHidlTest, TestAllocateSizes) {
+TEST_F(AllocatorHidlTest, TestAllocateSizes) {
     for (size_t size : {1, 1023, 1024, 1025, 4096}) {
         expectAllocateSuccess(size);
     }
 }
 
-TEST_P(AllocatorHidlTest, TestBatchAllocateSizes) {
+TEST_F(AllocatorHidlTest, TestBatchAllocateSizes) {
     for (size_t count : {1, 1, 2, 3, 10}) {
         for (size_t size : {1, 1023, 1024, 1025, 4096}) {
             expectBatchAllocateSuccess(size, count);
@@ -93,7 +102,7 @@ TEST_P(AllocatorHidlTest, TestBatchAllocateSizes) {
     }
 }
 
-TEST_P(AllocatorHidlTest, TestCommit) {
+TEST_F(AllocatorHidlTest, TestCommit) {
     constexpr size_t kSize = 1337;
 
     sp<IMemory> memory = expectAllocateSuccess(kSize);
@@ -122,7 +131,9 @@ TEST_P(AllocatorHidlTest, TestCommit) {
     }
 }
 
-INSTANTIATE_TEST_SUITE_P(
-        PerInstance, AllocatorHidlTest,
-        testing::ValuesIn(android::hardware::getAllHalInstanceNames(IAllocator::descriptor)),
-        android::hardware::PrintInstanceNameToString);
+int main(int argc, char** argv) {
+    ::testing::AddGlobalTestEnvironment(AllocatorEnvironment::instance());
+    ::testing::InitGoogleTest(&argc, argv);
+    AllocatorEnvironment::instance()->init(&argc, argv);
+    return RUN_ALL_TESTS();
+}
