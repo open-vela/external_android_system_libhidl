@@ -342,7 +342,6 @@ struct hidl_vec {
         memset(mPad, 0, sizeof(mPad));
     }
 
-    // Note, does not initialize primitive types.
     hidl_vec(size_t size) : hidl_vec() { resize(size); }
 
     hidl_vec(const hidl_vec<T> &other) : hidl_vec() {
@@ -507,7 +506,7 @@ struct hidl_vec {
         return mBuffer[index];
     }
 
-    // Does not initialize primitive types if new size > old size.
+    // Copies over old elements fitting in new size. Value initializes the rest.
     void resize(size_t size) {
         if (size > UINT32_MAX) {
             details::logAlwaysFatal("hidl_vec can't hold more than 2^32 elements.");
