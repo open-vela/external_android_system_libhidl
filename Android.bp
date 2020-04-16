@@ -87,6 +87,7 @@ cc_library {
     whole_static_libs: [
         "libhwbinder-impl-internal",
     ],
+    min_sdk_version: "29",
 }
 
 // Only libhwbinder_benchmark needs to have pgo enabled. When all places
