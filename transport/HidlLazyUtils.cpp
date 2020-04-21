@@ -29,27 +29,15 @@ namespace details {
 using ::android::hidl::base::V1_0::IBase;
 
 class ClientCounterCallback : public ::android::hidl::manager::V1_2::IClientCallback {
-  public:
-    ClientCounterCallback() {}
+   public:
+    ClientCounterCallback() : mNumConnectedServices(0) {}
 
     bool addRegisteredService(const sp<IBase>& service, const std::string& name);
 
-  protected:
+   protected:
     Return<void> onClients(const sp<IBase>& service, bool clients) override;
 
-  private:
-    struct Service {
-        sp<IBase> service;
-        std::string name;
-        bool clients = false;
-    };
-
-    /**
-     * Looks up service that is guaranteed to be registered (service from
-     * onClients).
-     */
-    Service& assertRegisteredService(const sp<IBase>& service);
-
+   private:
     /**
      * Registers or re-registers services. Returns whether successful.
      */
@@ -62,19 +50,28 @@ class ClientCounterCallback : public ::android::hidl::manager::V1_2::IClientCall
     void tryShutdown();
 
     /**
+     * Counter of the number of services that currently have at least one client.
+     */
+    size_t mNumConnectedServices;
+
+    struct Service {
+        sp<IBase> service;
+        std::string name;
+    };
+    /**
      * Number of services that have been registered.
      */
     std::vector<Service> mRegisteredServices;
 };
 
 class LazyServiceRegistrarImpl {
-  public:
+   public:
     LazyServiceRegistrarImpl() : mClientCallback(new ClientCounterCallback) {}
 
     status_t registerService(const sp<::android::hidl::base::V1_0::IBase>& service,
                              const std::string& name);
 
-  private:
+   private:
     sp<ClientCounterCallback> mClientCallback;
 };
 
@@ -87,17 +84,6 @@ bool ClientCounterCallback::addRegisteredService(const sp<IBase>& service,
     }
 
     return success;
-}
-
-ClientCounterCallback::Service& ClientCounterCallback::assertRegisteredService(
-        const sp<IBase>& service) {
-    for (Service& registered : mRegisteredServices) {
-        if (registered.service != service) continue;
-        return registered;
-    }
-    LOG(FATAL) << "Got callback on service " << getDescriptor(service.get())
-               << " which we did not register.";
-    __builtin_unreachable();
 }
 
 bool ClientCounterCallback::registerService(const sp<IBase>& service, const std::string& name) {
@@ -128,24 +114,17 @@ bool ClientCounterCallback::registerService(const sp<IBase>& service, const std:
  */
 Return<void> ClientCounterCallback::onClients(const sp<::android::hidl::base::V1_0::IBase>& service,
                                               bool clients) {
-    Service& registered = assertRegisteredService(service);
-    if (registered.clients == clients) {
-        LOG(FATAL) << "Process already thought " << getDescriptor(service.get()) << "/"
-                   << registered.name << " had clients: " << registered.clients
-                   << " but hwservicemanager has notified has clients: " << clients;
-    }
-    registered.clients = clients;
-
-    size_t numWithClients = 0;
-    for (const Service& registered : mRegisteredServices) {
-        if (registered.clients) numWithClients++;
+    if (clients) {
+        mNumConnectedServices++;
+    } else {
+        mNumConnectedServices--;
     }
 
-    LOG(INFO) << "Process has " << numWithClients << " (of " << mRegisteredServices.size()
+    LOG(INFO) << "Process has " << mNumConnectedServices << " (of " << mRegisteredServices.size()
               << " available) client(s) in use after notification " << getDescriptor(service.get())
-              << "/" << registered.name << " has clients: " << clients;
+              << " has clients: " << clients;
 
-    if (numWithClients == 0) {
+    if (mNumConnectedServices == 0) {
         tryShutdown();
     }
 
