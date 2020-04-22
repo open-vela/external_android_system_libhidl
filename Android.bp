@@ -87,6 +87,7 @@ cc_library {
     whole_static_libs: [
         "libhwbinder-impl-internal",
     ],
+    min_sdk_version: "29",
 }
 
 // Only libhwbinder_benchmark needs to have pgo enabled. When all places
@@ -112,8 +113,6 @@ cc_library {
 cc_library {
     name: "libhidltransport",
     vendor_available: true,
-
-    visibility: [":__subpackages__"],
 }
 
 cc_defaults {
