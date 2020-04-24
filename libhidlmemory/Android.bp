@@ -42,12 +42,12 @@ cc_library {
     export_shared_lib_headers: [
         "android.hidl.memory@1.0",
         "android.hidl.memory.token@1.0",
-        "libhidlbase"
+        "libhidlbase",
     ],
 
     srcs: [
         "HidlMemoryToken.cpp",
-        "mapping.cpp"
+        "mapping.cpp",
     ],
 
     product_variables: {
@@ -55,4 +55,5 @@ cc_library {
             cflags: ["-DLIBHIDL_TARGET_DEBUGGABLE"],
         },
     },
+    min_sdk_version: "29",
 }
