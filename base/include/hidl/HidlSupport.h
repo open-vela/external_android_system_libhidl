@@ -342,6 +342,7 @@ struct hidl_vec {
         memset(mPad, 0, sizeof(mPad));
     }
 
+    // Note, does not initialize primitive types.
     hidl_vec(size_t size) : hidl_vec() { resize(size); }
 
     hidl_vec(const hidl_vec<T> &other) : hidl_vec() {
@@ -411,7 +412,7 @@ struct hidl_vec {
     }
 
     T *releaseData() {
-        if (!mOwnsBuffer && mBuffer != nullptr) {
+        if (!mOwnsBuffer && mSize > 0) {
             resize(mSize);
         }
         mOwnsBuffer = false;
@@ -506,7 +507,7 @@ struct hidl_vec {
         return mBuffer[index];
     }
 
-    // Copies over old elements fitting in new size. Value initializes the rest.
+    // Does not initialize primitive types if new size > old size.
     void resize(size_t size) {
         if (size > UINT32_MAX) {
             details::logAlwaysFatal("hidl_vec can't hold more than 2^32 elements.");
@@ -1043,9 +1044,6 @@ constexpr hidl_invalid_type<T> hidl_enum_values;
  */
 template <typename T, typename = std::enable_if_t<std::is_enum<T>::value>>
 struct hidl_enum_range {
-    // Container-like associated type.
-    using value_type = T;
-
     constexpr auto begin() const { return std::begin(details::hidl_enum_values<T>); }
     constexpr auto cbegin() const { return begin(); }
     constexpr auto rbegin() const { return std::rbegin(details::hidl_enum_values<T>); }
