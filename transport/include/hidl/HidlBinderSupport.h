@@ -204,19 +204,13 @@ sp<IType> fromBinder(const sp<IBinder>& binderIface) {
     if (binderIface.get() == nullptr) {
         return nullptr;
     }
-
     if (binderIface->localBinder() == nullptr) {
         return new ProxyType(binderIface);
     }
-
-    // Ensure that IBinder is BnHwBase (not JHwBinder, for instance)
-    if (!binderIface->checkSubclass(IBase::descriptor)) {
-        return new ProxyType(binderIface);
-    }
     sp<IBase> base = static_cast<BnHwBase*>(binderIface.get())->getImpl();
-
     if (details::canCastInterface(base.get(), IType::descriptor)) {
-        return static_cast<IType*>(base.get());
+        StubType* stub = static_cast<StubType*>(binderIface.get());
+        return stub->getImpl();
     } else {
         return nullptr;
     }
