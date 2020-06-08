@@ -222,6 +222,24 @@ TEST_F(LibHidlTest, VecInitTest) {
     EXPECT_ARRAYEQ(v3, array, v3.size());
 }
 
+TEST_F(LibHidlTest, VecReleaseTest) {
+    // this test indicates an inconsistency of behaviors which is undesirable.
+    // Perhaps hidl-vec should always allocate an empty vector whenever it
+    // exposes its data. Alternatively, perhaps it should always free/reject
+    // empty vectors and always return nullptr for this state. While this second
+    // alternative is faster, it makes client code harder to write, and it would
+    // break existing client code.
+    using android::hardware::hidl_vec;
+
+    hidl_vec<int32_t> empty;
+    EXPECT_EQ(nullptr, empty.releaseData());
+
+    empty.resize(0);
+    int32_t* data = empty.releaseData();
+    EXPECT_NE(nullptr, data);
+    delete data;
+}
+
 TEST_F(LibHidlTest, VecIterTest) {
     int32_t array[] = {5, 6, 7};
     android::hardware::hidl_vec<int32_t> hv1 = std::vector<int32_t>(array, array + 3);
