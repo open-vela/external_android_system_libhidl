@@ -192,6 +192,7 @@ static void onRegistrationImpl(const std::string& descriptor, const std::string&
     tryShortenProcessName(descriptor);
 }
 
+// only used by prebuilts - should be able to remove
 void onRegistration(const std::string& packageName, const std::string& interfaceName,
                     const std::string& instanceName) {
     return onRegistrationImpl(packageName + "::" + interfaceName, instanceName);
