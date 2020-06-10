@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#define LOG_TAG "HidlLazyUtils"
+
 #include <hidl/HidlLazyUtils.h>
 #include <hidl/HidlTransportSupport.h>
 
