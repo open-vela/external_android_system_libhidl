@@ -234,9 +234,8 @@ MQDescriptor<T, flavor>& MQDescriptor<T, flavor>::operator=(const MQDescriptor& 
             mHandle->data[i] = dup(other.mHandle->data[i]);
         }
 
-        memcpy(&mHandle->data[other.mHandle->numFds],
-               &other.mHandle->data[other.mHandle->numFds],
-               other.mHandle->numInts * sizeof(int));
+        memcpy(&mHandle->data[other.mHandle->numFds], &other.mHandle->data[other.mHandle->numFds],
+               static_cast<size_t>(other.mHandle->numInts) * sizeof(int));
     }
 
     return *this;
@@ -258,7 +257,7 @@ MQDescriptor<T, flavor>::~MQDescriptor() {
 
 template<typename T, MQFlavor flavor>
 size_t MQDescriptor<T, flavor>::getSize() const {
-  return mGrantors[DATAPTRPOS].extent;
+    return static_cast<size_t>(mGrantors[DATAPTRPOS].extent);
 }
 
 template<typename T, MQFlavor flavor>
