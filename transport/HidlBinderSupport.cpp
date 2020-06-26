@@ -19,6 +19,9 @@
 #include <hidl/HidlBinderSupport.h>
 
 #include <android/hidl/base/1.0/BpHwBase.h>
+#include <android/hidl/manager/1.0/BpHwServiceManager.h>
+#include <android/hidl/manager/1.1/BpHwServiceManager.h>
+#include <android/hidl/manager/1.2/BpHwServiceManager.h>
 #include <hwbinder/IPCThreadState.h>
 #include "InternalStatic.h"  // TODO(b/69122224): remove this include, for getOrCreateCachedBinder
 
@@ -206,16 +209,34 @@ status_t writeToParcel(const Status &s, Parcel* parcel) {
     return status;
 }
 
+// assume: iface != nullptr, iface isRemote
+// This function is to sandbox a cast through a BpHw* class into a function, so
+// that we can remove cfi sanitization from it. Do not add additional
+// functionality here.
+__attribute__((no_sanitize("cfi"))) static inline BpHwRefBase* forceGetRefBase(
+        ::android::hidl::base::V1_0::IBase* ifacePtr) {
+    using ::android::hidl::base::V1_0::BpHwBase;
+
+    // canary only
+    static_assert(sizeof(BpHwBase) == sizeof(hidl::manager::V1_0::BpHwServiceManager));
+    static_assert(sizeof(BpHwBase) == sizeof(hidl::manager::V1_1::BpHwServiceManager));
+    static_assert(sizeof(BpHwBase) == sizeof(hidl::manager::V1_2::BpHwServiceManager));
+
+    // All BpHw* are generated the same. This may be BpHwServiceManager,
+    // BpHwFoo, or any other class. For ABI compatibility, we can't modify the
+    // class hierarchy of these, so we have no way to get BpHwRefBase from a
+    // remote ifacePtr.
+    BpHwBase* bpBase = static_cast<BpHwBase*>(ifacePtr);
+    return static_cast<BpHwRefBase*>(bpBase);
+}
+
 sp<IBinder> getOrCreateCachedBinder(::android::hidl::base::V1_0::IBase* ifacePtr) {
     if (ifacePtr == nullptr) {
         return nullptr;
     }
 
     if (ifacePtr->isRemote()) {
-        using ::android::hidl::base::V1_0::BpHwBase;
-
-        BpHwBase* bpBase = static_cast<BpHwBase*>(ifacePtr);
-        BpHwRefBase* bpRefBase = static_cast<BpHwRefBase*>(bpBase);
+        BpHwRefBase* bpRefBase = forceGetRefBase(ifacePtr);
         return sp<IBinder>(bpRefBase->remote());
     }
 
