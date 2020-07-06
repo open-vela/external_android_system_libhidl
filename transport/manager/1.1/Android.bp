@@ -3,6 +3,9 @@
 hidl_interface {
     name: "android.hidl.manager@1.1",
     root: "android.hidl",
+    vndk: {
+        enabled: true,
+    },
     srcs: [
         "IServiceManager.hal",
     ],
