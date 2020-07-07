@@ -108,8 +108,8 @@ cc_library {
 }
 
 // WARNING: deprecated
-// This library is no longer required, and dependencies should be taken
-// on libhidlbase instead.
+// This library is no longer required, and dependencies should be taken on libhidlbase instead.
+// This is automatically removed by bpfix. Once there are no makefiles, fixes can be automatically applied, and this can be removed.
 cc_library {
     name: "libhidltransport",
     vendor_available: true,
