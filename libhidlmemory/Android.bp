@@ -17,6 +17,8 @@ cc_library {
     vendor_available: true,
     // Host support is needed for testing only
     host_supported: true,
+    // TODO(b/153609531): remove when no longer needed.
+    native_bridge_supported: true,
     target: {
         darwin: {
             enabled: false,
