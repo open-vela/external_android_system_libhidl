@@ -165,6 +165,13 @@ cc_defaults {
         "transport/include",
     ],
 
+    header_libs: [
+        "libfmq-base",
+    ],
+    export_header_lib_headers: [
+        "libfmq-base",
+    ],
+
     generated_sources: [
         "android.hidl.manager@1.0_genc++",
         "android.hidl.manager@1.1_genc++",
