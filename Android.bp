@@ -65,6 +65,8 @@ cc_library {
     name: "libhidlbase",
     defaults: ["libhidlbase-combined-impl"],
     host_supported: true,
+    // TODO(b/153609531): remove when no longer needed.
+    native_bridge_supported: true,
     recovery_available: true,
     vendor_available: true,
     apex_available: [
