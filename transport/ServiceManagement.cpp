@@ -165,13 +165,10 @@ static constexpr bool kDebuggable = true;
 static constexpr bool kDebuggable = false;
 #endif
 
-static bool* getTrebleTestingOverridePtr() {
-    static bool gTrebleTestingOverride = false;
-    return &gTrebleTestingOverride;
-}
+static bool gTrebleTestingOverride = false;
 
 void setTrebleTestingOverride(bool testingOverride) {
-    *getTrebleTestingOverridePtr() = testingOverride;
+    gTrebleTestingOverride = testingOverride;
 }
 
 static inline bool isTrebleTestingOverride() {
@@ -180,7 +177,10 @@ static inline bool isTrebleTestingOverride() {
         return false;
     }
 
-    return *getTrebleTestingOverridePtr();
+    if (gTrebleTestingOverride) return gTrebleTestingOverride;
+
+    const char* env = std::getenv("TREBLE_TESTING_OVERRIDE");
+    return env && !strcmp(env, "true");
 }
 
 /*
