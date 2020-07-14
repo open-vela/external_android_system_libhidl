@@ -47,6 +47,10 @@ namespace details {
 // e.x.: android.hardware.foo@1.0::IFoo, default
 void waitForHwService(const std::string &interface, const std::string &instanceName);
 
+// Only works on userdebug/eng builds. This allows getService to bypass the
+// VINTF manifest for testing only.
+void setTrebleTestingOverride(bool testingOverride);
+
 void preloadPassthroughService(const std::string &descriptor);
 
 // Returns a service with the following constraints:

@@ -164,14 +164,10 @@ using MQDescriptorSync = MQDescriptor<T, kSynchronizedReadWrite>;
 template<typename T>
 using MQDescriptorUnsync = MQDescriptor<T, kUnsynchronizedWrite>;
 
-template<typename T, MQFlavor flavor>
-MQDescriptor<T, flavor>::MQDescriptor(
-        const std::vector<GrantorDescriptor>& grantors,
-        native_handle_t* nhandle,
-        size_t size)
-    : mHandle(nhandle),
-      mQuantum(size),
-      mFlags(flavor) {
+template <typename T, MQFlavor flavor>
+MQDescriptor<T, flavor>::MQDescriptor(const std::vector<GrantorDescriptor>& grantors,
+                                      native_handle_t* nhandle, size_t size)
+    : mHandle(nhandle), mQuantum(static_cast<uint32_t>(size)), mFlags(flavor) {
     mGrantors.resize(grantors.size());
     for (size_t i = 0; i < grantors.size(); ++i) {
         if (isAlignedToWordBoundary(grantors[i].offset) == false) {
@@ -181,10 +177,10 @@ MQDescriptor<T, flavor>::MQDescriptor(
     }
 }
 
-template<typename T, MQFlavor flavor>
-MQDescriptor<T, flavor>::MQDescriptor(size_t bufferSize, native_handle_t *nHandle,
-                                   size_t messageSize, bool configureEventFlag)
-    : mHandle(nHandle), mQuantum(messageSize), mFlags(flavor) {
+template <typename T, MQFlavor flavor>
+MQDescriptor<T, flavor>::MQDescriptor(size_t bufferSize, native_handle_t* nHandle,
+                                      size_t messageSize, bool configureEventFlag)
+    : mHandle(nHandle), mQuantum(static_cast<uint32_t>(messageSize)), mFlags(flavor) {
     /*
      * If configureEventFlag is true, allocate an additional spot in mGrantor
      * for containing the fd and offset for mmapping the EventFlag word.
@@ -234,9 +230,8 @@ MQDescriptor<T, flavor>& MQDescriptor<T, flavor>::operator=(const MQDescriptor& 
             mHandle->data[i] = dup(other.mHandle->data[i]);
         }
 
-        memcpy(&mHandle->data[other.mHandle->numFds],
-               &other.mHandle->data[other.mHandle->numFds],
-               other.mHandle->numInts * sizeof(int));
+        memcpy(&mHandle->data[other.mHandle->numFds], &other.mHandle->data[other.mHandle->numFds],
+               static_cast<size_t>(other.mHandle->numInts) * sizeof(int));
     }
 
     return *this;
@@ -258,7 +253,7 @@ MQDescriptor<T, flavor>::~MQDescriptor() {
 
 template<typename T, MQFlavor flavor>
 size_t MQDescriptor<T, flavor>::getSize() const {
-  return mGrantors[DATAPTRPOS].extent;
+    return static_cast<size_t>(mGrantors[DATAPTRPOS].extent);
 }
 
 template<typename T, MQFlavor flavor>
