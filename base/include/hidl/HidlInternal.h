@@ -44,8 +44,12 @@ struct bs_tag {};
 //to avoid creating dependencies on liblog.
 void logAlwaysFatal(const char *message);
 
-// Returns vndk version from "ro.vndk.version"
-std::string getVndkVersionStr();
+// Returns VNDK-SP hw path according to "ro.vndk.version"
+#if defined(__LP64__)
+std::string getVndkSpHwPath(const char* lib = "lib64");
+#else
+std::string getVndkSpHwPath(const char* lib = "lib");
+#endif
 
 // Explicitly invokes the parameterized element's destructor;
 // intended to be used alongside the placement new operator.
@@ -114,22 +118,18 @@ private:
 };
 
 #define HAL_LIBRARY_PATH_SYSTEM_64BIT "/system/lib64/hw/"
-#define HAL_LIBRARY_PATH_VNDK_SP_64BIT_FOR_VERSION "/apex/com.android.vndk.v%s/lib64/hw/"
 #define HAL_LIBRARY_PATH_VENDOR_64BIT "/vendor/lib64/hw/"
 #define HAL_LIBRARY_PATH_ODM_64BIT    "/odm/lib64/hw/"
 #define HAL_LIBRARY_PATH_SYSTEM_32BIT "/system/lib/hw/"
-#define HAL_LIBRARY_PATH_VNDK_SP_32BIT_FOR_VERSION "/apex/com.android.vndk.v%s/lib/hw/"
 #define HAL_LIBRARY_PATH_VENDOR_32BIT "/vendor/lib/hw/"
 #define HAL_LIBRARY_PATH_ODM_32BIT    "/odm/lib/hw/"
 
 #if defined(__LP64__)
 #define HAL_LIBRARY_PATH_SYSTEM HAL_LIBRARY_PATH_SYSTEM_64BIT
-#define HAL_LIBRARY_PATH_VNDK_SP_FOR_VERSION HAL_LIBRARY_PATH_VNDK_SP_64BIT_FOR_VERSION
 #define HAL_LIBRARY_PATH_VENDOR HAL_LIBRARY_PATH_VENDOR_64BIT
 #define HAL_LIBRARY_PATH_ODM    HAL_LIBRARY_PATH_ODM_64BIT
 #else
 #define HAL_LIBRARY_PATH_SYSTEM HAL_LIBRARY_PATH_SYSTEM_32BIT
-#define HAL_LIBRARY_PATH_VNDK_SP_FOR_VERSION HAL_LIBRARY_PATH_VNDK_SP_32BIT_FOR_VERSION
 #define HAL_LIBRARY_PATH_VENDOR HAL_LIBRARY_PATH_VENDOR_32BIT
 #define HAL_LIBRARY_PATH_ODM    HAL_LIBRARY_PATH_ODM_32BIT
 #endif
