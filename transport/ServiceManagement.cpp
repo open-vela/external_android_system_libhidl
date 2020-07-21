@@ -87,7 +87,7 @@ static void waitForHwServiceManager() {
 static std::string binaryName() {
     std::ifstream ifs("/proc/self/cmdline");
     std::string cmdline;
-    if (!ifs.is_open()) {
+    if (!ifs) {
         return "";
     }
     ifs >> cmdline;
@@ -106,7 +106,7 @@ static std::string packageWithoutVersion(const std::string& packageAndVersion) {
     return packageAndVersion.substr(0, at);
 }
 
-static void tryShortenProcessName(const std::string& descriptor) {
+__attribute__((noinline)) static void tryShortenProcessName(const std::string& descriptor) {
     const static std::string kTasks = "/proc/self/task/";
 
     // make sure that this binary name is in the same package
@@ -135,17 +135,17 @@ static void tryShortenProcessName(const std::string& descriptor) {
         if (dp->d_name[0] == '.') continue;
 
         std::fstream fs(kTasks + dp->d_name + "/comm");
-        if (!fs.is_open()) {
+        if (!fs) {
             ALOGI("Could not rename process, failed read comm for %s.", dp->d_name);
             continue;
         }
 
         std::string oldComm;
-        fs >> oldComm;
+        if (!(fs >> oldComm)) continue;
 
         // don't rename if it already has an explicit name
         if (base::StartsWith(descriptor, oldComm)) {
-            fs.seekg(0, fs.beg);
+            if (!fs.seekg(0, fs.beg)) continue;
             fs << newName;
         }
     }
@@ -157,7 +157,7 @@ namespace details {
  * Returns the age of the current process by reading /proc/self/stat and comparing starttime to the
  * current time. This is useful for measuring how long it took a HAL to register itself.
  */
-static long getProcessAgeMs() {
+__attribute__((noinline)) static long getProcessAgeMs() {
     constexpr const int PROCFS_STAT_STARTTIME_INDEX = 21;
     std::string content;
     android::base::ReadFileToString("/proc/self/stat", &content, false);
