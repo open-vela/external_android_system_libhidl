@@ -115,13 +115,6 @@ cc_library {
 cc_library {
     name: "libhidltransport",
     vendor_available: true,
-
-    visibility: [
-        ":__subpackages__",
-        "//hardware:__subpackages__",
-        "//test/sts:__subpackages__",
-        "//vendor:__subpackages__",
-    ],
 }
 
 cc_defaults {
@@ -163,6 +156,13 @@ cc_defaults {
     export_include_dirs: [
         "base/include",
         "transport/include",
+    ],
+
+    header_libs: [
+        "libfmq-base",
+    ],
+    export_header_lib_headers: [
+        "libfmq-base",
     ],
 
     generated_sources: [
