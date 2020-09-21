@@ -55,4 +55,8 @@ cc_library {
         "include",
     ],
     min_sdk_version: "29",
+    apex_available: [
+        "//apex_available:anyapex",
+        "//apex_available:platform",
+    ],
 }
