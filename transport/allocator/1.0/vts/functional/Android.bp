@@ -26,7 +26,3 @@ cc_test {
     ],
     test_suites: ["general-tests", "vts"],
 }
-
-vts_config {
-    name: "VtsHidlAllocatorV1_0Target",
-}
