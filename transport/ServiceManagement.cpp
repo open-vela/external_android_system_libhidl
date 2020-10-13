@@ -190,22 +190,50 @@ static inline bool isTrebleTestingOverride() {
 __attribute__((noinline)) static long getProcessAgeMs() {
     constexpr const int PROCFS_STAT_STARTTIME_INDEX = 21;
     std::string content;
-    android::base::ReadFileToString("/proc/self/stat", &content, false);
-    auto stats = android::base::Split(content, " ");
-    if (stats.size() <= PROCFS_STAT_STARTTIME_INDEX) {
-        LOG(INFO) << "Could not read starttime from /proc/self/stat";
+    if (!android::base::ReadFileToString("/proc/self/stat", &content, false)) {
+        LOG(ERROR) << "Process age: Could not read /proc/self/stat";
         return -1;
     }
-    const std::string& startTimeString = stats[PROCFS_STAT_STARTTIME_INDEX];
-    static const int64_t ticksPerSecond = sysconf(_SC_CLK_TCK);
-    const int64_t uptime = android::uptimeMillis();
 
-    unsigned long long startTimeInClockTicks = 0;
-    if (android::base::ParseUint(startTimeString, &startTimeInClockTicks)) {
-        long startTimeMs = 1000ULL * startTimeInClockTicks / ticksPerSecond;
-        return uptime - startTimeMs;
+    std::vector<std::string> stats = android::base::Split(content, " ");
+    if (PROCFS_STAT_STARTTIME_INDEX >= stats.size()) {
+        LOG(ERROR) << "Process age: Could not read starttime from /proc/self/stat";
+        return -1;
     }
-    return -1;
+
+    const std::string& startTimeString = stats.at(PROCFS_STAT_STARTTIME_INDEX);
+    unsigned long long startTimeInClockTicks = 0;
+    if (!android::base::ParseUint(startTimeString, &startTimeInClockTicks)) {
+        LOG(ERROR) << "Process age: Could not parse start time: " << startTimeString;
+        return -1;
+    }
+
+    const int64_t ticksPerSecond = sysconf(_SC_CLK_TCK);
+    if (ticksPerSecond <= 0) {
+        LOG(ERROR) << "Process age: Invalid _SC_CLK_TCK: " << ticksPerSecond;
+        return -1;
+    }
+
+    const int64_t uptime = android::uptimeMillis();
+    if (uptime < 0) {
+        LOG(ERROR) << "Process age: Invalid uptime: " << uptime;
+        return -1;
+    }
+
+    unsigned long long startTimeTicks;
+    if (__builtin_umulll_overflow(1000ULL, startTimeInClockTicks, &startTimeTicks)) {
+        LOG(ERROR) << "Process age: Too many ticks, overflow: " << startTimeInClockTicks;
+        return -1;
+    }
+
+    long startTimeMs = startTimeTicks / ticksPerSecond;
+    if (startTimeMs >= uptime) {
+        LOG(ERROR) << "Process age: process started in future: " << startTimeMs << " after "
+                   << uptime;
+        return -1;
+    }
+
+    return uptime - startTimeMs;
 }
 
 static void onRegistrationImpl(const std::string& descriptor, const std::string& instanceName) {
