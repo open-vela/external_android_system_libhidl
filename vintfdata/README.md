@@ -44,6 +44,13 @@ is last available in Android R and disabled in Android S.
 Deprecating a HAL doesn’t mean dropping support of the HAL, so no devices will
 break.
 
+When setting `max-level` of a HAL:
+- If `optional="false"` in frozen DCMs, the build system checks that adding the
+  attribute does not break backwards compatibility; that is,
+  `max-level > last_frozen_level`.
+- If `optional="true"`, the check is disabled. Care must be taken to ensure
+  `max-level` is set appropriately.
+
 ## Removing HAL
 
 When the framework drops support of a certain HAL, the corresponding HAL entry
@@ -63,15 +70,20 @@ determine the current level.
 Execute the following, replacing the argument with the level to freeze:
 
 ```shell script
+lunch cf_x86_phone-userdebug # or any generic target
 LEVEL=5
 ./freeze.sh ${LEVEL}
 ```
 
 A new file, `frozen/${LEVEL}.xml`, will be created after the command is
-executed. Frozen system manifests are stored in compatibility matrices. These
-compatibility matrices served as a reference for devices at that
+executed. Frozen system manifests are stored in compatibility matrices. Then,
+manually inspect the frozen compatibility matrix. Modify the `optional`
+field for certain HALs. See comments in the compatibility matrix of the previous
+level for details.
+
+These compatibility matrices served as a reference for devices at that
 target FCM version. Devices at the given target FCM version should
-use DCMs in the `frozen/` dir, although some of the HALs may be marked
+reference DCMs in the `frozen/` dir, with some of the HALs marked
 as `optional="true"` or even omitted if unused by device-specific code.
 
 At build time, compatibiltiy is checked between framework manifest and
