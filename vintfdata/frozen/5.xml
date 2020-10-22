@@ -35,7 +35,8 @@
             <instance>default</instance>
         </interface>
     </hal>
-    <hal format="hidl" optional="false">
+    <!-- TODO(b/171424919) set to required once trusty installs it. -->
+    <hal format="hidl" optional="true">
         <name>android.frameworks.stats</name>
         <version>1.0</version>
         <interface>
@@ -43,7 +44,8 @@
             <instance>default</instance>
         </interface>
     </hal>
-    <hal format="hidl" optional="false">
+    <!-- TODO(b/171424919) set to required once trusty installs it. -->
+    <hal format="hidl" optional="true">
         <name>android.hardware.media.c2</name>
         <version>1.1</version>
         <interface>
@@ -91,7 +93,8 @@
             <instance>default</instance>
         </interface>
     </hal>
-    <hal format="hidl" optional="false">
+    <!-- TODO(b/171424919) set to required once trusty installs it. -->
+    <hal format="hidl" optional="true">
         <name>android.system.suspend</name>
         <version>1.0</version>
         <interface>
