@@ -57,12 +57,6 @@ struct MQDescriptor {
         return mGrantors;
     }
 
-    // This should be removed if no one is using it. We shouldn't be returning
-    // a mutable reference if it's not necessary. TODO(b/162465295).
-    inline ::android::hardware::hidl_vec<GrantorDescriptor> &grantors() {
-        return mGrantors;
-    }
-
     inline const ::native_handle_t *handle() const {
         return mHandle;
     }
