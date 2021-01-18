@@ -13,5 +13,9 @@ cc_library_shared {
         "libbase",
         "libminijail",
     ],
-    visibility: [":__subpackages__"],
+    visibility: [
+        ":__subpackages__",
+        "//hardware/interfaces/configstore/1.1/default",
+        "//vendor:__subpackages__",
+    ],
 }
