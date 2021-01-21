@@ -839,13 +839,7 @@ status_t registerAsServiceInternal(const sp<IBase>& service, const std::string& 
 
     if (kEnforceVintfManifest && !isTrebleTestingOverride()) {
         using Transport = IServiceManager1_0::Transport;
-        Return<Transport> transport = sm->getTransport(descriptor, name);
-
-        if (!transport.isOk()) {
-            LOG(ERROR) << "Could not get transport for " << descriptor << "/" << name << ": "
-                       << transport.description();
-            return UNKNOWN_ERROR;
-        }
+        Transport transport = sm->getTransport(descriptor, name);
 
         if (transport != Transport::HWBINDER) {
             LOG(ERROR) << "Service " << descriptor << "/" << name
