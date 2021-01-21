@@ -40,7 +40,8 @@ class ClientCounterCallback : public ::android::hidl::manager::V1_2::IClientCall
 
     void reRegister();
 
-    void setActiveServicesCallback(const std::function<bool(bool)>& activeServicesCallback);
+    void setActiveServicesCountCallback(
+            const std::function<bool(int)>& activeServicesCountCallback);
 
   protected:
     Return<void> onClients(const sp<IBase>& service, bool clients) override;
@@ -79,12 +80,7 @@ class ClientCounterCallback : public ::android::hidl::manager::V1_2::IClientCall
     /**
      * Callback for reporting the number of services with clients.
      */
-    std::function<bool(bool)> mActiveServicesCallback;
-
-    /**
-     * Previous value passed to the active services callback.
-     */
-    std::optional<bool> mPreviousHasClients;
+    std::function<bool(int)> mActiveServicesCountCallback;
 };
 
 class LazyServiceRegistrarImpl {
@@ -95,7 +91,8 @@ class LazyServiceRegistrarImpl {
                              const std::string& name);
     bool tryUnregister();
     void reRegister();
-    void setActiveServicesCallback(const std::function<bool(bool)>& activeServicesCallback);
+    void setActiveServicesCountCallback(
+            const std::function<bool(int)>& activeServicesCountCallback);
 
   private:
     sp<ClientCounterCallback> mClientCallback;
@@ -169,12 +166,8 @@ Return<void> ClientCounterCallback::onClients(const sp<::android::hidl::base::V1
               << "/" << registered.name << " has clients: " << clients;
 
     bool handledInCallback = false;
-    if (mActiveServicesCallback != nullptr) {
-        bool hasClients = numWithClients != 0;
-        if (hasClients != mPreviousHasClients) {
-            handledInCallback = mActiveServicesCallback(hasClients);
-            mPreviousHasClients = hasClients;
-        }
+    if (mActiveServicesCountCallback != nullptr) {
+        handledInCallback = mActiveServicesCountCallback(numWithClients);
     }
 
     // If there is no callback defined or the callback did not handle this
@@ -236,9 +229,9 @@ void ClientCounterCallback::tryShutdown() {
     reRegister();
 }
 
-void ClientCounterCallback::setActiveServicesCallback(
-        const std::function<bool(bool)>& activeServicesCallback) {
-    mActiveServicesCallback = activeServicesCallback;
+void ClientCounterCallback::setActiveServicesCountCallback(
+        const std::function<bool(int)>& activeServicesCountCallback) {
+    mActiveServicesCountCallback = activeServicesCountCallback;
 }
 
 status_t LazyServiceRegistrarImpl::registerService(
@@ -258,9 +251,9 @@ void LazyServiceRegistrarImpl::reRegister() {
     mClientCallback->reRegister();
 }
 
-void LazyServiceRegistrarImpl::setActiveServicesCallback(
-        const std::function<bool(bool)>& activeServicesCallback) {
-    mClientCallback->setActiveServicesCallback(activeServicesCallback);
+void LazyServiceRegistrarImpl::setActiveServicesCountCallback(
+        const std::function<bool(int)>& activeServicesCountCallback) {
+    mClientCallback->setActiveServicesCountCallback(activeServicesCountCallback);
 }
 
 }  // namespace details
@@ -287,9 +280,9 @@ void LazyServiceRegistrar::reRegister() {
     mImpl->reRegister();
 }
 
-void LazyServiceRegistrar::setActiveServicesCallback(
-        const std::function<bool(bool)>& activeServicesCallback) {
-    mImpl->setActiveServicesCallback(activeServicesCallback);
+void LazyServiceRegistrar::setActiveServicesCountCallback(
+        const std::function<bool(int)>& activeServicesCountCallback) {
+    mImpl->setActiveServicesCountCallback(activeServicesCountCallback);
 }
 
 }  // namespace hardware
