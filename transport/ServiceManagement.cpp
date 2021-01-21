@@ -153,42 +153,11 @@ __attribute__((noinline)) static void tryShortenProcessName(const std::string& d
 
 namespace details {
 
-#ifdef ENFORCE_VINTF_MANIFEST
-static constexpr bool kEnforceVintfManifest = true;
-#else
-static constexpr bool kEnforceVintfManifest = false;
-#endif
-
-#ifdef LIBHIDL_TARGET_DEBUGGABLE
-static constexpr bool kDebuggable = true;
-#else
-static constexpr bool kDebuggable = false;
-#endif
-
-static bool* getTrebleTestingOverridePtr() {
-    static bool gTrebleTestingOverride = false;
-    return &gTrebleTestingOverride;
-}
-
-void setTrebleTestingOverride(bool testingOverride) {
-    *getTrebleTestingOverridePtr() = testingOverride;
-}
-
-static inline bool isTrebleTestingOverride() {
-    if (kEnforceVintfManifest && !kDebuggable) {
-        // don't allow testing override in production
-        return false;
-    }
-
-    return *getTrebleTestingOverridePtr();
-}
-
 static void onRegistrationImpl(const std::string& descriptor, const std::string& instanceName) {
     LOG(INFO) << "Registered " << descriptor << "/" << instanceName;
     tryShortenProcessName(descriptor);
 }
 
-// only used by prebuilts - should be able to remove
 void onRegistration(const std::string& packageName, const std::string& interfaceName,
                     const std::string& instanceName) {
     return onRegistrationImpl(packageName + "::" + interfaceName, instanceName);
@@ -360,7 +329,8 @@ struct PassthroughServiceManager : IServiceManager1_1 {
 
         dlerror(); // clear
 
-        static std::string halLibPathVndkSp = details::getVndkSpHwPath();
+        static std::string halLibPathVndkSp = android::base::StringPrintf(
+            HAL_LIBRARY_PATH_VNDK_SP_FOR_VERSION, details::getVndkVersionStr().c_str());
         std::vector<std::string> paths = {
             HAL_LIBRARY_PATH_ODM, HAL_LIBRARY_PATH_VENDOR, halLibPathVndkSp,
 #ifndef __ANDROID_VNDK__
@@ -368,7 +338,10 @@ struct PassthroughServiceManager : IServiceManager1_1 {
 #endif
         };
 
-        if (details::isTrebleTestingOverride()) {
+#ifdef LIBHIDL_TARGET_DEBUGGABLE
+        const char* env = std::getenv("TREBLE_TESTING_OVERRIDE");
+        const bool trebleTestingOverride = env && !strcmp(env, "true");
+        if (trebleTestingOverride) {
             // Load HAL implementations that are statically linked
             handle = dlopen(nullptr, dlMode);
             if (handle == nullptr) {
@@ -379,6 +352,7 @@ struct PassthroughServiceManager : IServiceManager1_1 {
                 return;
             }
         }
+#endif
 
         for (const std::string& path : paths) {
             std::vector<std::string> libs = findFiles(path, prefix, ".so");
@@ -477,8 +451,10 @@ struct PassthroughServiceManager : IServiceManager1_1 {
     Return<void> debugDump(debugDump_cb _hidl_cb) override {
         using Arch = ::android::hidl::base::V1_0::DebugInfo::Architecture;
         using std::literals::string_literals::operator""s;
-        static std::string halLibPathVndkSp64 = details::getVndkSpHwPath("lib64");
-        static std::string halLibPathVndkSp32 = details::getVndkSpHwPath("lib");
+        static std::string halLibPathVndkSp64 = android::base::StringPrintf(
+            HAL_LIBRARY_PATH_VNDK_SP_64BIT_FOR_VERSION, details::getVndkVersionStr().c_str());
+        static std::string halLibPathVndkSp32 = android::base::StringPrintf(
+            HAL_LIBRARY_PATH_VNDK_SP_32BIT_FOR_VERSION, details::getVndkVersionStr().c_str());
         static std::vector<std::pair<Arch, std::vector<const char*>>> sAllPaths{
             {Arch::IS_64BIT,
              {
@@ -727,6 +703,28 @@ bool handleCastError(const Return<bool>& castReturn, const std::string& descript
     return false;
 }
 
+#ifdef ENFORCE_VINTF_MANIFEST
+static constexpr bool kEnforceVintfManifest = true;
+#else
+static constexpr bool kEnforceVintfManifest = false;
+#endif
+
+#ifdef LIBHIDL_TARGET_DEBUGGABLE
+static constexpr bool kDebuggable = true;
+#else
+static constexpr bool kDebuggable = false;
+#endif
+
+static inline bool isTrebleTestingOverride() {
+    if (kEnforceVintfManifest && !kDebuggable) {
+        // don't allow testing override in production
+        return false;
+    }
+
+    const char* env = std::getenv("TREBLE_TESTING_OVERRIDE");
+    return env && !strcmp(env, "true");
+}
+
 sp<::android::hidl::base::V1_0::IBase> getRawServiceInternal(const std::string& descriptor,
                                                              const std::string& instance,
                                                              bool retry, bool getStub) {
@@ -839,13 +837,7 @@ status_t registerAsServiceInternal(const sp<IBase>& service, const std::string& 
 
     if (kEnforceVintfManifest && !isTrebleTestingOverride()) {
         using Transport = IServiceManager1_0::Transport;
-        Return<Transport> transport = sm->getTransport(descriptor, name);
-
-        if (!transport.isOk()) {
-            LOG(ERROR) << "Could not get transport for " << descriptor << "/" << name << ": "
-                       << transport.description();
-            return UNKNOWN_ERROR;
-        }
+        Transport transport = sm->getTransport(descriptor, name);
 
         if (transport != Transport::HWBINDER) {
             LOG(ERROR) << "Service " << descriptor << "/" << name
