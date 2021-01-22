@@ -201,13 +201,22 @@ struct HidlInstrumentor {
     // A list of registered instrumentation callbacks.
     std::vector<InstrumentationCallback> mInstrumentationCallbacks;
     // Flag whether to enable instrumentation.
-    bool mEnableInstrumentation;
+    union {
+        bool mEnableInstrumentation;
+        void* mReserved0;
+    };
     // Prefix to lookup the instrumentation libraries.
     std::string mInstrumentationLibPackage;
     // Used for dlsym to load the profiling method for given interface.
     std::string mInterfaceName;
 
 };
+
+#ifdef __LP64__
+static_assert(sizeof(HidlInstrumentor) == 88, "HidlInstrumentor size frozen by prebuilts");
+#else
+static_assert(sizeof(HidlInstrumentor) == 44, "HidlInstrumentor size frozen by prebuilts");
+#endif
 
 }  // namespace details
 }  // namespace hardware
