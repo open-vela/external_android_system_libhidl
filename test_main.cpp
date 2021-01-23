@@ -17,7 +17,7 @@
 #define LOG_TAG "LibHidlTest"
 
 #pragma clang diagnostic push
-#pragma clang diagnostic fatal "-Wpadded"
+#pragma clang diagnostic error "-Wpadded"
 #include <hidl/HidlInternal.h>
 #include <hidl/HidlSupport.h>
 #pragma clang diagnostic pop
