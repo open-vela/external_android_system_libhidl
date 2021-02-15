@@ -25,6 +25,13 @@ cc_library {
     name: "android.hidl.token@1.0-utils",
     defaults: ["libhidl-defaults"],
     vendor_available: true,
+    // Host support is needed for testing only
+    host_supported: true,
+    target: {
+        darwin: {
+            enabled: false,
+        },
+    },
     vndk: {
         enabled: true,
     },
@@ -57,4 +64,8 @@ cc_library {
         "include",
     ],
     min_sdk_version: "29",
+    apex_available: [
+        "//apex_available:anyapex",
+        "//apex_available:platform",
+    ],
 }

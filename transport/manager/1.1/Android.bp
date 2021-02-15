@@ -12,9 +12,6 @@ package {
 hidl_interface {
     name: "android.hidl.manager@1.1",
     root: "android.hidl",
-    vndk: {
-        enabled: true,
-    },
     srcs: [
         "IServiceManager.hal",
     ],
@@ -23,4 +20,8 @@ hidl_interface {
         "android.hidl.manager@1.0",
     ],
     gen_java: true,
+    apex_available: [
+        "//apex_available:anyapex",
+        "//apex_available:platform",
+    ],
 }

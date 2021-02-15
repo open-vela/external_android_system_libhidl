@@ -17,7 +17,7 @@
 #define LOG_TAG "LibHidlTest"
 
 #pragma clang diagnostic push
-#pragma clang diagnostic fatal "-Wpadded"
+#pragma clang diagnostic error "-Wpadded"
 #include <hidl/HidlInternal.h>
 #include <hidl/HidlSupport.h>
 #pragma clang diagnostic pop
@@ -220,6 +220,24 @@ TEST_F(LibHidlTest, VecInitTest) {
     hidl_vec<int32_t> v3 = {5, 6, 7}; // initializer_list
     EXPECT_EQ(v3.size(), 3ul);
     EXPECT_ARRAYEQ(v3, array, v3.size());
+}
+
+TEST_F(LibHidlTest, VecReleaseTest) {
+    // this test indicates an inconsistency of behaviors which is undesirable.
+    // Perhaps hidl-vec should always allocate an empty vector whenever it
+    // exposes its data. Alternatively, perhaps it should always free/reject
+    // empty vectors and always return nullptr for this state. While this second
+    // alternative is faster, it makes client code harder to write, and it would
+    // break existing client code.
+    using android::hardware::hidl_vec;
+
+    hidl_vec<int32_t> empty;
+    EXPECT_EQ(nullptr, empty.releaseData());
+
+    empty.resize(0);
+    int32_t* data = empty.releaseData();
+    EXPECT_NE(nullptr, data);
+    delete data;
 }
 
 TEST_F(LibHidlTest, VecIterTest) {
