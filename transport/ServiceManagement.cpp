@@ -417,18 +417,27 @@ struct PassthroughServiceManager : IServiceManager1_1 {
             *(void **)(&generator) = dlsym(handle, sym.c_str());
             if(!generator) {
                 const char* error = dlerror();
-                LOG(ERROR) << "Passthrough lookup opened " << lib
-                           << " but could not find symbol " << sym << ": "
-                           << (error == nullptr ? "unknown error" : error);
-                dlclose(handle);
-                return true;
+                LOG(ERROR) << "Passthrough lookup opened " << lib << " but could not find symbol "
+                           << sym << ": " << (error == nullptr ? "unknown error" : error)
+                           << ". Keeping library open.";
+
+                // dlclose too problematic in multi-threaded environment
+                // dlclose(handle);
+
+                return true;  // continue
             }
 
             ret = (*generator)(name.c_str());
 
             if (ret == nullptr) {
-                dlclose(handle);
-                return true; // this module doesn't provide this instance name
+                LOG(ERROR) << "Could not find instance '" << name.c_str() << "' in library " << lib
+                           << ". Keeping library open.";
+
+                // dlclose too problematic in multi-threaded environment
+                // dlclose(handle);
+
+                // this module doesn't provide this particular instance
+                return true;  // continue
             }
 
             // Actual fqname might be a subclass.
