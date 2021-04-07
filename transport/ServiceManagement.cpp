@@ -159,12 +159,6 @@ static constexpr bool kEnforceVintfManifest = true;
 static constexpr bool kEnforceVintfManifest = false;
 #endif
 
-#ifdef LIBHIDL_TARGET_DEBUGGABLE
-static constexpr bool kDebuggable = true;
-#else
-static constexpr bool kDebuggable = false;
-#endif
-
 static bool* getTrebleTestingOverridePtr() {
     static bool gTrebleTestingOverride = false;
     return &gTrebleTestingOverride;
@@ -174,8 +168,13 @@ void setTrebleTestingOverride(bool testingOverride) {
     *getTrebleTestingOverridePtr() = testingOverride;
 }
 
+static bool isDebuggable() {
+    static bool debuggable = base::GetBoolProperty("ro.debuggable", false);
+    return debuggable;
+}
+
 static inline bool isTrebleTestingOverride() {
-    if (kEnforceVintfManifest && !kDebuggable) {
+    if (kEnforceVintfManifest && !isDebuggable()) {
         // don't allow testing override in production
         return false;
     }
@@ -766,7 +765,7 @@ sp<::android::hidl::base::V1_0::IBase> getRawServiceInternal(const std::string& 
     const bool vintfHwbinder = (transport == Transport::HWBINDER);
     const bool vintfPassthru = (transport == Transport::PASSTHROUGH);
     const bool trebleTestingOverride = isTrebleTestingOverride();
-    const bool allowLegacy = !kEnforceVintfManifest || (trebleTestingOverride && kDebuggable);
+    const bool allowLegacy = !kEnforceVintfManifest || (trebleTestingOverride && isDebuggable());
     const bool vintfLegacy = (transport == Transport::EMPTY) && allowLegacy;
 
     if (!kEnforceVintfManifest) {
