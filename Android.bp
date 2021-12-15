@@ -95,7 +95,7 @@ cc_library {
         "//apex_available:platform",
         "com.android.neuralnetworks",
         "test_com.android.neuralnetworks",
-        "com.android.bluetooth.updatable",
+        "com.android.bluetooth",
         "com.android.media",
         "com.android.media.swcodec",
         "com.android.tethering",
