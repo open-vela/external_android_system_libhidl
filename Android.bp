@@ -110,23 +110,6 @@ cc_library {
     min_sdk_version: "29",
 }
 
-// Only libhwbinder_benchmark needs to have pgo enabled. When all places
-// support having PGO selectively enabled, all places can use libhwbinder.
-//
-// http://b/77320844
-cc_library {
-    name: "libhidlbase_pgo",
-    defaults: [
-        "libhidlbase-combined-impl",
-        "hwbinder_benchmark_pgo",
-    ],
-    whole_static_libs: [
-        "libhwbinder_pgo-impl-internal",
-    ],
-
-    visibility: ["//system/libhwbinder:__subpackages__"],
-}
-
 // WARNING: deprecated
 // This library is no longer required, and dependencies should be taken on libhidlbase instead.
 // This is automatically removed by bpfix. Once there are no makefiles, fixes can be automatically applied, and this can be removed.
