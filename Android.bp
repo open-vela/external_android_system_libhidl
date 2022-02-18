@@ -57,6 +57,7 @@ cc_test {
     host_supported: true,
     defaults: ["libhidl-defaults"],
     gtest: false,
+    tidy_timeout_srcs: ["test_main.cpp"],
     srcs: ["test_main.cpp"],
     test_suites: ["device-tests"],
 
