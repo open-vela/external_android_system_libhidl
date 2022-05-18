@@ -48,6 +48,7 @@ phony {
 
 cc_library_headers {
     name: "libhidl_gtest_helper",
+    vendor_available: true,
     host_supported: true,
     export_include_dirs: ["gtest_helper"],
 }
