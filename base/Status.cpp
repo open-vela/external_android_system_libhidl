@@ -18,7 +18,9 @@
 #include <android-base/logging.h>
 
 #include <hidl/Status.h>
+#if defined(__linux__)
 #include <utils/CallStack.h>
+#endif
 
 #include <unordered_map>
 
@@ -131,8 +133,10 @@ namespace details {
 
         if (gReturnRestriction == HidlReturnRestriction::ERROR_IF_UNCHECKED) {
             LOG(ERROR) << "Failed to check status of HIDL Return.";
+#if defined(__linux__)
             CallStack::logStack("unchecked HIDL return", CallStack::getCurrent(10).get(),
                                 ANDROID_LOG_ERROR);
+#endif
         } else {
             LOG(FATAL) << "Failed to check status of HIDL Return.";
         }
