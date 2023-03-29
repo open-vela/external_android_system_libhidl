@@ -337,7 +337,7 @@ struct hidl_vec {
     using value_type = T;
 
     hidl_vec() : mBuffer(nullptr), mSize(0), mOwnsBuffer(false) {
-        static_assert(hidl_vec<T>::kOffsetOfBuffer == 0, "wrong offset");
+        static_assert(offsetof(hidl_vec<T>, mBuffer) == 0, "wrong offset");
 
         memset(mPad, 0, sizeof(mPad));
     }
