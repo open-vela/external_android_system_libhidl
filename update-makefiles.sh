@@ -11,4 +11,5 @@ fi
 source $ANDROID_BUILD_TOP/system/tools/hidl/update-makefiles-helper.sh
 
 do_makefiles_update \
+  -o $(pwd)/base/include \
   "android.hidl:system/libhidl/transport"
