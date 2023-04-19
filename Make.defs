@@ -16,5 +16,5 @@
 
 ifneq ($(CONFIG_ANDROID_LIBHIDL),)
 CONFIGURED_APPS += $(APPDIR)/external/android/system/libhidl
-CXXFLAGS += ${shell $(INCDIR) $(INCDIROPT) "$(CC)" $(APPDIR)/external/android/system/libhidl/base/include}
+CXXFLAGS += ${INCDIR_PREFIX}$(APPDIR)/external/android/system/libhidl/base/include
 endif
