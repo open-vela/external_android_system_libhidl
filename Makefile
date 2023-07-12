@@ -19,6 +19,9 @@ include $(APPDIR)/Make.defs
 CXXEXT = .cpp
 
 CXXSRCS += android/hidl/base/1.0/BaseAll.cpp
+CXXSRCS += android/hidl/manager/1.0/IServiceManager.cpp
+CXXSRCS += android/hidl/manager/1.1/IServiceManager.cpp
+CXXSRCS += android/hidl/manager/1.2/IServiceManager.cpp
 CXXSRCS += base/HidlSupport.cpp
 CXXSRCS += base/HidlInternal.cpp
 CXXSRCS += base/Status.cpp
