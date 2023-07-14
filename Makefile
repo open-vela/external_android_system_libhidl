@@ -26,7 +26,9 @@ CXXSRCS += base/HidlSupport.cpp
 CXXSRCS += base/HidlInternal.cpp
 CXXSRCS += base/Status.cpp
 
+
+ANDROID_BUILD_TOP=$(CURDIR)/../../
 context::
-	ANDROID_BUILD_TOP=$(CURDIR)/../../ ./update-makefiles.sh > ./tmp.log 2>&1
+	-ANDROID_BUILD_TOP=$(ANDROID_BUILD_TOP) ./update-makefiles.sh 2>&1
 
 include $(APPDIR)/Application.mk
