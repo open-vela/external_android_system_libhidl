@@ -31,4 +31,7 @@ ANDROID_BUILD_TOP=$(CURDIR)/../../
 context::
 	-ANDROID_BUILD_TOP=$(ANDROID_BUILD_TOP) ./update-makefiles.sh 2>&1
 
+distclean::
+	$(call DELDIR, base/include/android/)
+
 include $(APPDIR)/Application.mk
