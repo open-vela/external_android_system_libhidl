@@ -10,6 +10,11 @@ fi
 
 source $ANDROID_BUILD_TOP/system/tools/hidl/update-makefiles-helper.sh
 
+if [ $# -gt 0 ]; then
+    output_dir=$1
+else
+    output_dir=$(pwd)/base/include
+fi
 do_makefiles_update \
-  -o $(pwd)/base/include \
+  -o $output_dir \
   "android.hidl:system/libhidl/transport"
